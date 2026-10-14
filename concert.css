@@ -1,0 +1,51 @@
+/* Local posters and personal concert albums, using the uploaded page's theme. */
+.picture { background: radial-gradient(ellipse at top, #39485e, #0b1322 80%); }
+.image-missing::after { content: 'ECHOES · LIVE MEMORIES'; position: absolute; inset: 0; display: grid; place-items: center; color: #e4b863; font: 12px Georgia, serif; letter-spacing: 2px; }
+.hero-stack-card .picture img, .hero-stack-card.is-current .picture img { object-fit: contain; transform: none; }
+.hero-stack-card { background: #101521; }
+.hero-stack-card .picture { background: #101521; }
+.hero-stack-card::after { background: linear-gradient(180deg, rgba(3,7,18,.08), transparent 25%, transparent 65%, rgba(2,6,15,.85)); }
+.hero-stack-copy strong { font-size: 22px; }
+.hero-stack-copy span { font-size: 11px; }
+.hero-stack-meta { opacity: .85; }
+.detail-panel { max-width: 880px; }
+.detail-image { height: min(56vh, 480px); background: #0b1322; }
+.detail-image .picture img { object-fit: contain; }
+.detail-image::after { display: none; }
+.detail-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 18px 0; border-top: 1px solid var(--line); margin: 0; }
+.detail-facts dt { color: var(--soft); font-size: 11px; margin-bottom: 4px; }
+.detail-facts dd { margin: 0; font-size: 13px; }
+.detail-body .memory-note:empty { display: none; }
+.concert-album { border-top: 1px solid var(--line); padding-top: 22px; margin-top: 10px; }
+.album-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+.album-heading h3 { font-size: 18px; margin: 0; }
+.album-heading span, .album-help { font-size: 11px; color: var(--muted); }
+.album-help { margin: 8px 0 18px; line-height: 1.8; }
+.album-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; }
+.album-photo { border: 1px solid var(--line); border-radius: 14px; padding: 0; overflow: hidden; background: var(--bg2); position: relative; aspect-ratio: 4/3; color: white; }
+.album-photo img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .4s; }
+.album-photo:hover img { transform: scale(1.04); }
+.media-badge { position: absolute; top: 10px; left: 10px; border-radius: 99px; padding: 4px 9px; background: rgba(0,0,0,.65); font-size: 9px; letter-spacing: 1px; color: #fff; }
+.album-empty { grid-column: 1/-1; padding: 32px 18px; border: 1px dashed var(--line); border-radius: 14px; text-align: center; color: var(--soft); font-size: 13px; }
+.photo-viewer { z-index: 50; background: rgba(2,5,12,.95); }
+.photo-panel { width: min(1200px,100%); position: relative; }
+.photo-panel .modal-close { right: 0; top: 0; }
+.photo-media { min-height: 160px; height: 75vh; display: flex; align-items: center; justify-content: center; }
+.photo-media img, .photo-media video { max-width: 100%; max-height: 100%; object-fit: contain; }
+.photo-media [hidden] { display: none; }
+.photo-controls { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-top: 12px; }
+.photo-controls p { font-size: 12px; color: #fff; text-align: center; overflow-wrap: anywhere; }
+#photoStatus { text-align: center; font-size: 12px; color: #e4b863; min-height: 20px; }
+.live-play { display: block; margin: 10px auto 0; }
+.photo-panel .btn { color: white; background: rgba(255,255,255,.1); }
+.hero-carousel-tracks { flex-wrap: wrap; }
+@media(prefers-reduced-motion:reduce) {
+ .hero-stack-card { transform: translate3d(var(--tx),var(--ty),0) scale(var(--scale)) rotate(var(--rotate)) rotateY(var(--rotateY)) !important; }
+}
+@media(max-width:540px) {
+ .album-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+ .detail-body { padding: 22px 20px; }
+ .detail-facts { gap: 12px; }
+ .photo-media { height: 65vh; }
+ .hero-stack-copy strong { font-size: 18px; }
+}
