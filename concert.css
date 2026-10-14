@@ -39,6 +39,61 @@
 .live-play { display: block; margin: 10px auto 0; }
 .photo-panel .btn { color: white; background: rgba(255,255,255,.1); }
 .hero-carousel-tracks { flex-wrap: wrap; }
+
+/* Reserve the same caption space on every slide, including long show names. */
+html #heroSlideTitle {
+ font-size: clamp(32px, 4vw, 52px);
+ line-height: 1.2;
+ letter-spacing: -.6px;
+ height: 2.4em;
+ min-width: 0;
+ max-width: 100%;
+ overflow-wrap: anywhere;
+ display: -webkit-box;
+ -webkit-box-orient: vertical;
+ -webkit-line-clamp: 2;
+ overflow: hidden;
+}
+html #heroSlideSub {
+ font-size: clamp(16px, 1.6vw, 22px);
+ line-height: 1.5;
+ height: 3em;
+ max-width: 100%;
+ overflow-wrap: anywhere;
+ display: -webkit-box;
+ -webkit-box-orient: vertical;
+ -webkit-line-clamp: 2;
+ overflow: hidden;
+}
+html .feature-note { line-height: 2; height: 6em; min-height: 0; }
+
+/* Scrolling should not resample the page behind every glass surface. */
+html .glass, html .header, html .btn, html .chip,
+html .search-wrap input, html .memory-tag, html .modal,
+html .field input, html .field textarea, html .navigation,
+html .hero-carousel-arrow, html .hero-carousel-toggle,
+html .theme-switch, html .hero-stack-card,
+html .hero-stack-index, html .hero-stack-city {
+ backdrop-filter: none;
+ -webkit-backdrop-filter: none;
+}
+html .header { background: #101a2b; }
+html[data-theme="light"] .header { background: #f8f5ef; }
+html .memory-tag, html .hero-stack-index, html .hero-stack-city { background: rgba(10,16,28,.78); }
+html .modal { background: rgba(2,5,12,.9); }
+html .grain { display: none; }
+html .feature-ambient-ring, html .feature-card-stage::before { filter: none; }
+html .hero-stack-card, html .hero-stack-card.is-near, html .hero-stack-card.is-far {
+ filter: none;
+ transition: transform .82s var(--spring), opacity .55s var(--spring);
+}
+@keyframes concertCaptionRise {
+ from { opacity: 0; transform: translate3d(0,16px,0); }
+ to { opacity: 1; transform: translate3d(0,0,0); }
+}
+html .feature-intro.animate > * { animation-name: concertCaptionRise; }
+/* Animate a composited transform instead of changing layout every frame. */
+html .hero-carousel-track .fill { width: 100%; transform: scaleX(0); transform-origin: left; }
 @media(prefers-reduced-motion:reduce) {
  .hero-stack-card { transform: translate3d(var(--tx),var(--ty),0) scale(var(--scale)) rotate(var(--rotate)) rotateY(var(--rotateY)) !important; }
 }

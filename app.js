@@ -43,7 +43,7 @@ function filtered(){return ordered(data).filter(r=>(activeYear==='全部'||year(
 function gallery(){const box=$('gallery');box.replaceChildren();const rs=filtered();if(!rs.length){const empty=document.createElement('div');empty.className='no-result';empty.innerHTML='<strong>这里暂时没有匹配的回忆</strong><span>换个年份或关键词试试看，也可以记录一场新演出。</span>';box.append(empty);return}rs.forEach((r,i)=>{const el=document.createElement('article');el.className='memory-card';el.tabIndex=0;el.setAttribute('role','button');el.setAttribute('aria-label',`查看${r.artist}${r.title}演出详情`);el.innerHTML=`<div class="memory-tag">${safe(upcoming(r)?r.city+' · 待赴现场':r.city)}${r.media?.length?' · '+r.media.length+' 张现场':''}</div><div class="memory-arrow" aria-hidden="true">↗</div><div class="memory-info"><div class="memory-date">${safe(displayDate(r.date))}</div><h3>${safe(r.artist)}</h3><p>${safe(r.title)} <span>·</span> ${safe(r.city)}</p></div>`;el.prepend(imgDiv(r,false,true));el.addEventListener('click',()=>showDetail(r.id));el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();showDetail(r.id)}});box.append(el)});}
 function timeline(){const list=$('timelineList');list.replaceChildren();const rs=ordered(data);if(!rs.length){list.innerHTML='<p class="timeline-empty">你的时间线还没有演出记录，去记录第一场吧。</p>';return}const groups=new Map();rs.forEach(r=>{let y=year(r);if(!groups.has(y))groups.set(y,[]);groups.get(y).push(r)});for(const [y,items] of groups){const section=document.createElement('div');section.className='timeline-year-block';const h=document.createElement('h3');h.className='timeline-year';h.textContent=y;section.append(h);items.forEach(r=>{const row=document.createElement('button');row.type='button';row.className='timeline-item';row.innerHTML=`<span class="when">${safe(monthDay(r.date))}</span><span><span class="who">${safe(r.artist)} · ${safe(r.title)}${upcoming(r)?' · 待赴现场':''}</span><span class="what" style="display:block">${safe(r.city)}${r.venue?' / '+safe(r.venue):''}</span></span><span class="go" aria-hidden="true">↗</span>`;row.addEventListener('click',()=>showDetail(r.id));section.append(row)});list.append(section)}}
 
-// 轮播图片与记忆数据同步：使用双层画面交叉溶解，缓慢 Ken Burns 推近。
+// 轮播仅在可见时自动运行，进度使用 transform 避免逐帧布局。
 const HERO_DURATION=6800;
 const HERO_REDUCED=window.matchMedia('(prefers-reduced-motion: reduce)');
 let heroItems=[],heroIndex=0,heroTimeout=null,heroStartTime=0,heroRemaining=HERO_DURATION;
@@ -53,15 +53,15 @@ function stopHeroClock(){
  if(heroTimeout===null)return;
  clearTimeout(heroTimeout);heroTimeout=null;
  heroRemaining=Math.max(40,heroRemaining-(performance.now()-heroStartTime));
- const fill=heroBars()[heroIndex];if(fill){const w=getComputedStyle(fill).width;fill.style.transition='none';fill.style.width=w;}
+ const fill=heroBars()[heroIndex];if(fill){fill.style.transition='none';fill.style.transform=`scaleX(${1-heroRemaining/HERO_DURATION})`;}
 }
 function startHeroClock(){
  if(heroPauses.size||heroItems.length<2||heroTimeout!==null)return;
  const fill=heroBars()[heroIndex];if(!fill)return;
  heroStartTime=performance.now();
- fill.style.transition='none';void fill.offsetWidth;
- fill.style.transition=`width ${heroRemaining}ms linear`;
- fill.style.width='100%';
+ fill.style.transition='none';fill.style.transform=`scaleX(${1-heroRemaining/HERO_DURATION})`;void fill.offsetWidth;
+ fill.style.transition=`transform ${heroRemaining}ms linear`;
+ fill.style.transform='scaleX(1)';
  heroTimeout=setTimeout(()=>{heroTimeout=null;heroRemaining=HERO_DURATION;setHeroSlide((heroIndex+1)%heroItems.length);},heroRemaining);
 }
 function heroPause(reason,value){
@@ -77,8 +77,10 @@ function refreshHeroToggle(){
 }
 function setHeroCaption(r,animate){
  $('heroSlideMeta').textContent=r.date?`${displayDate(r.date)}  ·  ${r.city||'LIVE'}${upcoming(r)?' · 待赴现场':''}`:'THE SOUND OF MEMORIES';
- $('heroSlideTitle').textContent=r.artist||'Live, forever.';
- $('heroSlideSub').textContent=r.title||'你的下一段现场记忆，从这里开始';
+ $('heroSlideTitle').textContent=r.title||'你的下一段现场记忆，从这里开始';
+ $('heroSlideSub').textContent=r.artist||'Live, forever.';
+ $('heroSlideTitle').title=$('heroSlideTitle').textContent;
+ $('heroSlideSub').title=$('heroSlideSub').textContent;
  $('heroSlideNote').textContent=r.note||(upcoming(r)?'下一次见面，在歌声与灯光里。':`${r.venue||r.city}，属于 ${r.artist||'音乐'} 的那一晚。${r.media?.length?'打开这场演出，重温亲手拍下的现场。':'从一张海报，回到那一个现场。'}`);
  $('heroDateExact').textContent=r.date?displayDate(r.date):'待记录';
  $('heroCity').textContent=r.city||'下一站';
@@ -127,7 +129,6 @@ function layoutHeroCards(){
   const rotate=abs===0?0:(diff<0?-7.5:7.5);
   const rotateY=abs===0?0:(diff<0?17:-17);
   const opacity=abs===0?1:(abs===1?.72:(abs===2?.28:0));
-  const blur=abs===0?0:(abs===1?.3:1.8);
   card.classList.toggle('is-current',abs===0);
   card.classList.toggle('is-near',abs===1);
   card.classList.toggle('is-far',abs>=2);
@@ -138,7 +139,6 @@ function layoutHeroCards(){
   card.style.setProperty('--rotate',`${rotate}deg`);
   card.style.setProperty('--rotateY',`${rotateY}deg`);
   card.style.setProperty('--opacity',opacity);
-  card.style.setProperty('--blur',`${blur}px`);
   card.style.setProperty('--z',String(30-abs));
   card.setAttribute('aria-current',String(abs===0));
   card.tabIndex=abs<=2?0:-1;
@@ -152,9 +152,9 @@ function setHeroTracks(){
  bars.forEach((fill,i)=>{
   const current=i===heroIndex;
   fill.style.transition='none';
-  fill.style.width=i<heroIndex?'100%':'0%';
+  fill.style.transform=i<heroIndex?'scaleX(1)':'scaleX(0)';
   fill.parentElement.setAttribute('aria-current',String(current));
-  if(current)fill.style.width='0%';
+  if(current)fill.style.transform='scaleX(0)';
  });
 }
 function setHeroSlide(index){
@@ -203,6 +203,12 @@ $('heroCarousel').addEventListener('touchend',e=>{
  if(Math.abs(dx)>45&&Math.abs(dx)>Math.abs(dy)*1.4)setHeroSlide(heroIndex+(dx<0?1:-1));
 },{passive:true});
 document.addEventListener('visibilitychange',()=>heroPause('hidden',document.hidden));
+if('IntersectionObserver' in window){
+ const heroObserver=new IntersectionObserver(entries=>{
+  for(const entry of entries)heroPause('offscreen',!entry.isIntersecting);
+ });
+ heroObserver.observe($('heroCarousel'));
+}
 HERO_REDUCED.addEventListener?.('change',e=>heroPause('reduced',e.matches));
 window.addEventListener('resize',()=>layoutHeroCards(),{passive:true});
 if(HERO_REDUCED.matches)heroPauses.add('reduced');
