@@ -14,6 +14,7 @@ LiveLog 是个人演唱会足迹与现场记忆的静态网站。首页采用 EC
 - Python 脚本负责整理演出数据、扫描素材和转换 HEIC。
 - 视频优先通过 ffmpeg 转换；没有 ffmpeg 时尝试调用 macOS Swift 与 AVFoundation。
 - 网站没有后端、数据库或账号系统，可直接作为静态网站部署。
+- GitHub Pages 发布源根目录必须保留 `.nojekyll`，跳过 Jekyll 构建，防止 `_web/` 素材被排除。更改发布源目录或部署打包方式时，应确保该标记随发布文件一起提供。
 
 | 路径 | 职责 |
 | --- | --- |
