@@ -5,7 +5,7 @@
  const escapeHTML=value=>String(value||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  class ConcertLivePhoto extends window.LivePhoto.Player {
   constructor(host,{imageSrc,videoSrc,alt,preview=false,onStatus=()=>{},onState=()=>{}}){
-   super(host,{imageSrc,videoSrc,alt:escapeHTML(alt),mute:true});
+   super(host,{imageSrc,videoSrc,alt:escapeHTML(alt),mute:preview});
    this.preview=preview;this.onStatus=onStatus;this.onState=onState;
    this.disposed=false;this.wantsPlayback=false;this.generation=0;
    this.events=new AbortController();
@@ -42,12 +42,17 @@
   bindEvents(){
    super.bindEvents();
    const listen=(target,name,handler)=>target.addEventListener(name,handler,{signal:this.events.signal});
-   listen(this.elements.image,'load',()=>{if(!this.disposed)this.onStatus('悬停 LIVE 图标或按住它播放；也可点击播放按钮。')});
+   listen(this.elements.image,'load',()=>{this.positionControls();if(!this.disposed)this.onStatus('悬停或按住照片左上角的 LIVE 图标播放，点击声音图标切换声音。')});
    listen(this.elements.image,'error',()=>{if(!this.disposed)this.onStatus('原始照片无法显示，请检查 HEIC 文件。')});
    if(this.preview)return;
    const {icon,volumeControl,video}=this.elements;
+   if(typeof ResizeObserver!=='undefined'){
+    this.layoutObserver=new ResizeObserver(()=>this.positionControls());
+    this.layoutObserver.observe(this.container);
+   }
+   this.positionControls();
    icon.setAttribute('role','button');icon.tabIndex=0;icon.setAttribute('aria-label','播放实况');
-   volumeControl.setAttribute('role','button');volumeControl.tabIndex=0;volumeControl.setAttribute('aria-label','开启声音');
+   volumeControl.setAttribute('role','button');volumeControl.tabIndex=0;volumeControl.setAttribute('aria-label','关闭声音');
    listen(icon,'click',event=>{if(video.paused)void this.handleStart(event)});
    listen(icon,'keydown',event=>{
     if([' ','Enter'].includes(event.key)){event.preventDefault();if(!event.repeat)void this.handleStart(event)}
@@ -70,6 +75,14 @@
    listen(window,'blur',()=>this.handleStop());
    this.reportState();
   }
+  positionControls(){
+   if(this.disposed||this.preview)return;
+   const {image,wrapper}=this.elements,controls=wrapper.querySelector?.('.controls');
+   if(!controls||!image.naturalWidth||!image.naturalHeight)return;
+   const scale=Math.min(wrapper.clientWidth/image.naturalWidth,wrapper.clientHeight/image.naturalHeight);
+   controls.style.left=`${(wrapper.clientWidth-image.naturalWidth*scale)/2+14}px`;
+   controls.style.top=`${(wrapper.clientHeight-image.naturalHeight*scale)/2+14}px`;
+  }
   reportState(failed=false){
    if(this.disposed||this.preview)return;
    const playing=!this.elements.video.paused;
@@ -87,13 +100,13 @@
    await super.handleStart(event);
    if(this.disposed){this.releaseMedia();return}
    if(generation!==this.generation){if(!this.wantsPlayback)super.handleStop();return}
-   if(this.elements.video.paused){this.wantsPlayback=false;this.onStatus('播放未能开始，请点击播放按钮重试。')}
+   if(this.elements.video.paused){this.wantsPlayback=false;this.onStatus('播放未能开始，请点击照片左上角的 LIVE 图标重试。')}
    this.reportState();
   }
   handleStop(){
    this.generation++;this.wantsPlayback=false;
    if(this.elements)super.handleStop();
-   if(!this.disposed&&!this.preview){this.reportState();this.onStatus('悬停 LIVE 图标或按住它播放；也可点击播放按钮。')}
+   if(!this.disposed&&!this.preview){this.reportState();this.onStatus('悬停或按住照片左上角的 LIVE 图标播放，点击声音图标切换声音。')}
   }
   toggle(){if(!this.elements)return;if(this.elements.video.paused)void this.handleStart();else this.handleStop()}
   toggleSound(){this.elements?.volumeControl.click()}
@@ -109,7 +122,7 @@
    video.load();this.elements.wrapper.classList.remove('zoom');
   }
   destroy(){
-   this.disposed=true;this.handleStop();this.observer?.disconnect();this.events.abort();
+   this.disposed=true;this.handleStop();this.observer?.disconnect();this.layoutObserver?.disconnect();this.events.abort();
    this.releaseMedia();this.container.replaceChildren();
    this.container.classList.remove('thun-live-host','thun-live-preview');
   }

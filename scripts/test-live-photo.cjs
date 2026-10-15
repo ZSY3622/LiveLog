@@ -17,7 +17,7 @@ class Element extends EventTarget {
 function setup({preview=false,reduced=false}={}){
  const revoked=[],statuses=[],states=[];
  class UpstreamPlayer {
-  constructor(host,options){this.container=host;this.options=options;this.isMuted=true;this.observer={disconnect:()=>this.disconnected=true}}
+  constructor(host,options){this.container=host;this.options=options;this.isMuted=options.mute;this.observer={disconnect:()=>this.disconnected=true}}
   init(){this.render();this.bindEvents()}
   render(){this.renderedByUpstream=true;this.elements=Object.fromEntries(['video','image','wrapper','icon','volumeControl'].map(k=>[k,new Element()]));this.elements.video.setAttribute('src',this.options.videoSrc)}
   bindEvents(){this.elements.volumeControl.addEventListener('click',()=>{this.isMuted=!this.isMuted;this.elements.video.muted=this.isMuted})}
@@ -51,7 +51,9 @@ test('release during a pending upstream play cannot leave video running',async()
 });
 test('explicit playback and sound use upstream methods',async()=>{
  const {player,states}=setup();await player.handleStart();assert.equal(player.upstreamStarts,1);
- player.toggleSound();assert.equal(player.isMuted,false);assert.equal(states.at(-1).muted,false);
+ assert.equal(player.isMuted,false);
+ player.toggleSound();assert.equal(player.isMuted,true);assert.equal(states.at(-1).muted,true);
+ player.toggleSound();assert.equal(player.isMuted,false);
  player.toggle();assert.equal(player.elements.video.paused,true);
 });
 test('reduced motion skips hover while preserving explicit play',async()=>{

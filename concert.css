@@ -44,7 +44,6 @@
 .photo-media .live-photo .controls { position: absolute; left: 14px; top: 14px; }
 .photo-media .live-photo .icon img, .photo-media .live-photo .volume-icon { object-fit: contain; }
 .photo-media .live-photo .warning { top: 45px; font-size: 12px; }
-.live-photo-controls { display: flex; justify-content: center; gap: 12px; margin-top: 10px; }
 @media(prefers-reduced-motion:reduce) {
  .thun-live-host .live-photo .container img, .thun-live-host .live-photo .container video { transition: none; }
  .thun-live-host .live-photo.zoom .icon img { animation: none; }

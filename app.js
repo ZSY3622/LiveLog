@@ -272,15 +272,10 @@ function renderPhoto(){
  $('photoTitle').textContent=`${albumRecord.artist} · ${displayDate(albumRecord.date)} · ${photoIndex+1} / ${media.length}`;
  $('photoStatus').textContent='';$('photoPrev').disabled=$('photoNext').disabled=media.length<2;
  if(item.kind==='live'){
-  const controls=document.createElement('div');controls.id='photoPanelPlayback';controls.className='live-photo-controls';
-  const play=document.createElement('button'), sound=document.createElement('button');
-  play.type=sound.type='button';play.className=sound.className='btn';play.textContent='◉ 播放实况';sound.textContent='开启声音';controls.append(play,sound);
-  $('photoStatus').textContent='正在读取原始 HEIC 照片…';$('photoStatus').before(controls);
+  $('photoStatus').textContent='正在读取原始 HEIC 照片…';
   activeLivePhoto=window.mountConcertLivePhoto({host:box,imageSrc:imageURL(item.image),videoSrc:imageURL(item.video),alt:`${albumRecord.artist}实况照片 ${photoIndex+1}`,
-   onStatus:message=>{$('photoStatus').textContent=message},
-   onState:({playing,muted,failed})=>{play.textContent=playing?'■ 停止实况':'◉ 播放实况';sound.textContent=muted?'开启声音':'关闭声音';play.setAttribute('aria-pressed',String(playing));sound.setAttribute('aria-pressed',String(!muted));play.disabled=sound.disabled=failed}
+   onStatus:message=>{$('photoStatus').textContent=message}
   });
-  play.addEventListener('click',()=>activeLivePhoto?.toggle());sound.addEventListener('click',()=>activeLivePhoto?.toggleSound());
   return;
  }
  const img=document.createElement('img');img.src=imageURL(item.image||albumRecord.poster);img.alt=`${albumRecord.artist}现场照片 ${photoIndex+1}`;
