@@ -61,16 +61,24 @@
    const tracked=super.trackLoad(promise);
    const finish=()=>{
     if(this.disposed)this.releaseMedia();
-    else if(!this.elements.image.getAttribute('src'))this.onStatus('原始照片加载失败，请检查 HEIC 文件。');
+    else if(!this.elements.image.getAttribute('src'))this.reportImageFailure();
    };
    tracked.then(finish,finish);
    return tracked;
+  }
+  reportImageFailure(){
+   if(this.disposed)return;
+   const message=window.location?.protocol==='file:'
+    ?'直接打开 HTML 时，浏览器会限制实况照片读取。请通过本机 HTTP 预览或 GitHub Pages 打开页面。'
+    :'原始照片加载失败，请检查 HEIC 文件和资源路径。';
+   if(!this.preview)this.showWarning(message);
+   this.onStatus(message);
   }
   bindEvents(){
    super.bindEvents();
    const listen=(target,name,handler)=>target.addEventListener(name,handler,{signal:this.events.signal});
    listen(this.elements.image,'load',()=>{this.positionControls();if(!this.disposed)this.onStatus('悬停或按住照片左上角的 LIVE 图标播放，点击声音图标切换声音。')});
-   listen(this.elements.image,'error',()=>{if(!this.disposed&&!this.nativeImagePending)this.onStatus('原始照片无法显示，请检查 HEIC 文件。')});
+   listen(this.elements.image,'error',()=>{if(!this.nativeImagePending)this.reportImageFailure()});
    if(this.preview)return;
    const {icon,volumeControl,video}=this.elements;
    if(typeof ResizeObserver!=='undefined'){

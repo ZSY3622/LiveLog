@@ -41,7 +41,7 @@ window.CONCERT_DATA = [
   },
   {
     "date": "2025-10-26",
-    "title": "#5525 回到那一天",
+    "title": "5525 回到那一天",
     "artist": "五月天",
     "city": "厦门",
     "venue": "白鹭体育场",

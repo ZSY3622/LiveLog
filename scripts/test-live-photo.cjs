@@ -16,7 +16,7 @@ class Element extends EventTarget {
  pause(){this.paused=true}
  load(){this.loaded=true}
 }
-function setup({preview=false,reduced=false,imageSrc='https://local/IMG.HEIC'}={}){
+function setup({preview=false,reduced=false,protocol='https:',imageSrc='https://local/IMG.HEIC'}={}){
  const revoked=[],statuses=[],states=[];
  class UpstreamPlayer {
   constructor(host,options){this.container=host;this.options=options;this.isMuted=options.mute;this.observer={disconnect:()=>this.disconnected=true}}
@@ -30,7 +30,7 @@ function setup({preview=false,reduced=false,imageSrc='https://local/IMG.HEIC'}={
   decodeHeic(){this.decodes=(this.decodes||0)+1;return Promise.resolve({decoded:true})}
   loadAndroidLivePhoto(src){this.fallbackSources=(this.fallbackSources||[]).concat(src)}
  }
- const window=new Element(),document=new Element();document.baseURI='https://local/index.html';window.LivePhoto={Player:UpstreamPlayer};window.matchMedia=()=>({matches:reduced});
+ const window=new Element(),document=new Element();document.baseURI='https://local/index.html';window.LivePhoto={Player:UpstreamPlayer};window.matchMedia=()=>({matches:reduced});window.location={protocol};
  class TestURL extends URL {static revokeObjectURL(url){revoked.push(url)}}
  const context=vm.createContext({window,document,AbortController,URL:TestURL});
  vm.runInContext(fs.readFileSync(path.join(__dirname,'../live-photo.js'),'utf8'),context);
@@ -89,7 +89,7 @@ test('native HEIC failure falls back to upstream decoding over HTTP once',()=>{
  assert.equal(player.elements.image.getAttribute('src'),null);
  assert.match(statuses.at(-1),/解码/);
  player.elements.image.dispatchEvent(new Event('error'));
- assert.equal(player.fallbackSources.length,1);assert.match(statuses.at(-1),/无法显示/);
+ assert.equal(player.fallbackSources.length,1);assert.match(statuses.at(-1),/加载失败/);
 });
 test('unsupported file HEIC gives actionable instructions without a blocked fetch',()=>{
  const src='file:///concert/IMG.heif', {player,statuses}=setup({imageSrc:src});
@@ -110,4 +110,10 @@ test('viewer attaches the original MOV only when playback is requested',async()=
  await player.handleStart({type:'click',cancelable:false});
  assert.equal(player.elements.video.getAttribute('src'),player.options.videoSrc);
  assert.equal(player.upstreamStarts,1);
+});
+test('failed file-protocol HEIC reads explain how to open a working preview',async()=>{
+ const {player,statuses}=setup({protocol:'file:'});
+ await player.trackLoad(Promise.resolve());await settle();
+ assert.match(statuses.at(-1),/直接打开 HTML/);
+ assert.match(player.warning,/HTTP/);
 });

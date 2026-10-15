@@ -1,13 +1,98 @@
 /* Local posters and personal concert albums, using the uploaded page's theme. */
 .picture { background: radial-gradient(ellipse at top, #39485e, #0b1322 80%); }
-.image-missing::after { content: 'ECHOES · LIVE MEMORIES'; position: absolute; inset: 0; display: grid; place-items: center; color: #e4b863; font: 12px Georgia, serif; letter-spacing: 2px; }
-.hero-stack-card .picture img, .hero-stack-card.is-current .picture img { object-fit: contain; transform: none; }
+.image-missing::after { content: 'LiveLog · LIVE MEMORIES'; position: absolute; inset: 0; display: grid; place-items: center; color: #e4b863; font: 12px Georgia, serif; letter-spacing: 2px; }
+/* Fill carousel cards so poster proportions do not leave dark letterboxing. */
+.hero-stack-card .picture img, .hero-stack-card.is-current .picture img { object-fit: cover; transform: none; }
 .hero-stack-card { background: #101521; }
 .hero-stack-card .picture { background: #101521; }
 .hero-stack-card::after { background: linear-gradient(180deg, rgba(3,7,18,.08), transparent 25%, transparent 65%, rgba(2,6,15,.85)); }
 .hero-stack-copy strong { font-size: 22px; }
 .hero-stack-copy span { font-size: 11px; }
-.hero-stack-meta { opacity: .85; }
+.hero-stack-meta { opacity: .85; justify-content: flex-end; }
+html #heroSlideMeta {
+ font-family: var(--font);
+ font-weight: 500;
+ font-variant-numeric: lining-nums tabular-nums;
+ letter-spacing: .06em;
+ line-height: 1.6;
+}
+.feature-visual-bottom { justify-content: flex-end; }
+html .feature-facts { grid-template-columns: minmax(0, .85fr) minmax(0, 1.65fr); }
+/* Leave room for the poster cards that fan into the gap between columns. */
+@media(min-width:1121px) {
+ html .feature-facts, html .feature-playback-head {
+  width: calc(100% - 144px);
+  max-width: 530px;
+ }
+}
+
+/* Clear, aligned timeline numerals in the same family as the concert details. */
+html .timeline-year, html .timeline-item .when, html .timeline-side .year-big {
+ font-family: var(--font);
+ font-variant-numeric: lining-nums tabular-nums;
+}
+html .timeline-year {
+ font-size: clamp(26px, 3vw, 32px);
+ font-weight: 600;
+ letter-spacing: -.035em;
+ line-height: 1.2;
+ margin-bottom: 18px;
+}
+html .timeline-year::before { top: calc(.6em - 6px); }
+html .timeline-item .when {
+ font-size: 16px;
+ font-weight: 500;
+ letter-spacing: .025em;
+}
+html .timeline-side .year-big { font-weight: 600; letter-spacing: -.06em; }
+@media(max-width:540px) {
+ html .timeline-item .when { font-size: 14px; }
+}
+
+/* Keep the statistics in one type family with a quieter secondary hierarchy. */
+html .stats .stat-number {
+ display: flex;
+ align-items: baseline;
+ gap: 9px;
+ font-family: var(--font);
+ font-size: clamp(34px, 3vw, 42px);
+ font-weight: 500;
+ font-variant-numeric: lining-nums tabular-nums;
+ letter-spacing: -.045em;
+ line-height: 1.15;
+}
+html .stats .stat-number span {
+ margin-left: 0;
+ font-family: inherit;
+ font-size: 12px;
+ font-weight: 500;
+ letter-spacing: .04em;
+ line-height: 1;
+ color: var(--muted);
+}
+html .stats .stat-text {
+ margin-top: 11px;
+ font-size: 12px;
+ font-weight: 400;
+ letter-spacing: .06em;
+ line-height: 1.6;
+ color: var(--muted);
+}
+@media(max-width:540px) {
+ html .stats .stat-number { font-size: 32px; gap: 7px; }
+ html .stats .stat-number span { font-size: 11px; }
+ html .stats .stat-text { font-size: 11px; margin-top: 8px; }
+}
+
+.memory-slideshow, .memory-slide { position: absolute; inset: 0; }
+.memory-slide { opacity: 0; transition: opacity 1.2s ease-in-out; pointer-events: none; }
+.memory-slide.is-active { opacity: 1; }
+.memory-slide-count { position: absolute; z-index: 3; top: 58px; right: 18px; padding: 3px 9px; border-radius: 999px; background: rgba(10,16,28,.75); color: #fff; font-size: 11px; font-variant-numeric: tabular-nums; pointer-events: none; }
+#galleryToggle[hidden] { display: none; }
+@media(prefers-reduced-motion:reduce) {
+ .memory-slide { transition: none; }
+ #galleryToggle { display: none; }
+}
 .detail-panel { max-width: 880px; }
 .detail-image { height: min(56vh, 480px); background: #0b1322; }
 .detail-image .picture img { object-fit: contain; }
@@ -55,12 +140,20 @@
 .photo-panel .btn { color: white; background: rgba(255,255,255,.1); }
 .hero-carousel-tracks { flex-wrap: wrap; }
 
-/* Reserve the same caption space on every slide, including long show names. */
+/* Keep the heading and artist together without empty lines between the facts. */
+html .feature-kicker { margin-bottom: 24px; }
+html .feature-intro { min-height: 0; padding-bottom: 24px; }
+html .feature-meta-line { margin-bottom: 12px; }
+html #heroSlideMeta { margin-bottom: 10px; }
 html #heroSlideTitle {
+ font-family: var(--font);
+ font-weight: 600;
+ font-variant-numeric: lining-nums;
  font-size: clamp(32px, 4vw, 52px);
  line-height: 1.2;
  letter-spacing: -.6px;
- height: 2.4em;
+ height: auto;
+ margin: 0;
  min-width: 0;
  max-width: 100%;
  overflow-wrap: anywhere;
@@ -70,9 +163,12 @@ html #heroSlideTitle {
  overflow: hidden;
 }
 html #heroSlideSub {
- font-size: clamp(16px, 1.6vw, 22px);
- line-height: 1.5;
- height: 3em;
+ font-size: clamp(26px, 2.6vw, 34px);
+ font-weight: 500;
+ line-height: 1.35;
+ letter-spacing: .02em;
+ height: auto;
+ margin: 12px 0 0;
  max-width: 100%;
  overflow-wrap: anywhere;
  display: -webkit-box;
@@ -80,7 +176,11 @@ html #heroSlideSub {
  -webkit-line-clamp: 2;
  overflow: hidden;
 }
-html .feature-note { line-height: 2; height: 6em; min-height: 0; }
+@media(max-width:640px) {
+ html .feature-kicker { margin-bottom: 0; }
+ html .feature-intro { padding-bottom: 0; }
+ html #heroSlideSub { margin-top: 10px; }
+}
 
 /* Scrolling should not resample the page behind every glass surface. */
 html .glass, html .header, html .btn, html .chip,
