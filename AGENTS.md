@@ -21,13 +21,14 @@ LiveLog 是个人演唱会足迹与现场记忆的静态网站。首页采用 EC
 | `index.html` | 首页结构、原始页面样式与主题初始化脚本 |
 | `concert.css` | 本地海报、现场相册、照片查看器等补充样式，在原始样式之后加载 |
 | `app.js` | 轮播、统计、筛选、详情、相册、弹窗与浏览器记录管理 |
+| `live-photo.js` | 实况图的照片/视频叠放、悬停/按住播放、静音与销毁清理，在 `app.js` 前加载 |
 | `README.md` | 演出基本信息表和用户使用说明，也是数据生成脚本的输入 |
 | `public/concert/metadata.json` | 按日期补充或覆盖演出信息 |
 | `public/concert/YYYY-MM-DD/` | 对应日期的海报和现场素材 |
 | `public/concert-data.js` | 自动生成的演出清单，向页面提供 `window.CONCERT_DATA` |
 | `scripts/sync-concerts.py` | 读取演出表、合并补充信息、扫描素材并生成清单 |
 | `scripts/convert-video.swift` | 将现场视频导出为 MP4 |
-| `scripts/requirements.txt` | HEIC 转换依赖 Pillow 和 pillow-heif |
+| `scripts/requirements.txt` | HEIC 转换依赖 Pillow、pillow-heif，以及提供视频转换程序的 imageio-ffmpeg |
 
 ## 数据来源与更新
 
@@ -73,7 +74,9 @@ public/concert/
 - 日期判断使用 `Asia/Shanghai` 时区。未来演出标为“待赴现场”，不计入已看场次、城市、音乐人和年份统计。
 - 演出详情展示海报、场馆、日期、座位、票价以及对应现场相册。
 - 拼贴墙优先展示该场演出的现场照片，没有现场素材时展示海报。
-- 相册支持放大、前后切换和键盘操作；Live Photo 通过用户点击播放动态视频。
+- 相册支持放大、前后切换和键盘操作。实况查看器支持鼠标悬停、手机按住、键盘空格/回车按住和点击按钮播放，默认静音，可手动开启声音。
+- 实况视频按需加载，静态照片在视频成功播放后才淡出；松开、离开、播放结束、切换照片、关闭或切到后台时停止，减少动态效果偏好会禁用悬停播放。
+- 更改实况交互后执行 `node --test scripts/test-live-photo.cjs`；更改视频缓存/转换后执行 `python3 -m unittest discover -s scripts -p 'test_sync_concerts.py'`，转换应使用临时文件并在成功后替换目标，避免复用失败产物。
 - 弹窗需保持焦点管理、Escape 关闭和滚动锁定，关闭照片查看器后返回演出详情。
 - 保留明暗主题、移动端布局、键盘可访问性和减少动态效果偏好。
 

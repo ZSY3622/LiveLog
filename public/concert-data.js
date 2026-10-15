@@ -50,7 +50,14 @@ window.CONCERT_DATA = [
     "note": "",
     "id": "concert-2025-10-26",
     "poster": "public/concert/2025-10-26/poster.jpg",
-    "media": []
+    "media": [
+      {
+        "name": "IMG_0946.HEIC",
+        "image": "public/concert/2025-10-26/live/_web/IMG_0946.jpg",
+        "original": "public/concert/2025-10-26/live/IMG_0946.HEIC",
+        "kind": "photo"
+      }
+    ]
   },
   {
     "date": "2025-07-13",
@@ -71,12 +78,21 @@ window.CONCERT_DATA = [
     "artist": "陶喆",
     "city": "福州",
     "venue": "福州海峡奥林匹克体育中心体育场",
-    "seat": "",
-    "price": "",
+    "seat": "E5区 50排23座",
+    "price": "580",
     "note": "",
     "id": "concert-2025-06-01",
     "poster": "public/concert/2025-06-01/poster.jpg",
-    "media": []
+    "media": [
+      {
+        "name": "IMG_9573.HEIC",
+        "image": "public/concert/2025-06-01/live/_web/IMG_9573.jpg",
+        "original": "public/concert/2025-06-01/live/IMG_9573.HEIC",
+        "kind": "live",
+        "video": "public/concert/2025-06-01/live/_web/IMG_9573.mp4",
+        "videoOriginal": "public/concert/2025-06-01/live/IMG_9573.mov"
+      }
+    ]
   },
   {
     "date": "2024-12-22",

@@ -227,8 +227,13 @@ function syncModals(){
  heroPause('modal',Boolean(top));
 }
 function openModal(el){focusBeforeModal.set(el,document.activeElement);el.classList.add('show');syncModals();(el.querySelector('input')||el.querySelector('.modal-close'))?.focus()}
-function closeModal(el){if(el.id==='photoModal'){$('photoMedia').replaceChildren()}el.classList.remove('show');syncModals();focusBeforeModal.get(el)?.focus?.()}
-let albumRecord=null, photoIndex=0;
+function closeModal(el){if(el.id==='photoModal')releasePhoto();el.classList.remove('show');syncModals();focusBeforeModal.get(el)?.focus?.()}
+let albumRecord=null, photoIndex=0, activeLivePhoto=null;
+function releasePhoto(){
+ activeLivePhoto?.destroy();activeLivePhoto=null;
+ $('photoMedia').querySelectorAll('video').forEach(video=>{video.pause();video.removeAttribute('src');video.load()});
+ $('photoMedia').replaceChildren();$('photoPanelPlayback')?.remove();
+}
 function renderConcertDetail(r){
  const facts=$('detailFacts');facts.replaceChildren();
  for(const [label,value] of [['状态',upcoming(r)?'待赴现场':'已看现场'],['座位',r.seat||'未记录'],['票价',r.price?'¥ '+r.price:'未记录'],['日期',displayDate(r.date)]]){
@@ -237,7 +242,7 @@ function renderConcertDetail(r){
  }
  const media=r.media||[], album=$('detailAlbum');album.replaceChildren();
  $('albumCount').textContent=media.length?`${media.length} 份现场记忆`:'';
- $('albumHelp').textContent=media.some(m=>m.kind==='live')?'点击照片放大，选择「播放 Live Photo」重温动态现场。':media.length?'点击照片，放大重温那一晚。':'';
+ $('albumHelp').textContent=media.some(m=>m.kind==='live')?'带 ◉ LIVE 标记的是实况照片。点击放大后，鼠标悬停或按住照片即可播放。':media.length?'点击照片，放大重温那一晚。':'';
  if(!media.length){const empty=document.createElement('p');empty.className='album-empty';empty.textContent=upcoming(r)?'等到那一晚，把新的现场带回来。':'这一晚的照片，等你慢慢收藏。';album.append(empty);return}
  media.forEach((item,index)=>{
   const button=document.createElement('button');button.type='button';button.className='album-photo';
@@ -249,13 +254,25 @@ function renderConcertDetail(r){
  });
 }
 function renderPhoto(){
- const media=albumRecord.media, item=media[photoIndex], box=$('photoMedia');box.replaceChildren();
+ releasePhoto();
+ const media=albumRecord.media, item=media[photoIndex], box=$('photoMedia');
  $('photoTitle').textContent=`${albumRecord.artist} · ${displayDate(albumRecord.date)} · ${photoIndex+1} / ${media.length}`;
  $('photoStatus').textContent='';$('photoPrev').disabled=$('photoNext').disabled=media.length<2;
  const img=document.createElement('img');img.src=imageURL(item.image||albumRecord.poster);img.alt=`${albumRecord.artist}现场照片 ${photoIndex+1}`;
  img.addEventListener('error',()=>{$('photoStatus').textContent='照片暂时无法显示，请检查本地素材。'});box.append(img);
  $('photoPanelPlayback')?.remove();
  if(!item.video)return;
+ if(item.kind==='live'){
+  const video=document.createElement('video');video.preload='none';video.src=imageURL(item.video);video.poster=img.src;
+  const badge=document.createElement('span');badge.className='live-photo-label';badge.textContent='◉ LIVE · 实况';
+  box.append(video,badge);
+  const controls=document.createElement('div');controls.id='photoPanelPlayback';controls.className='live-photo-controls';
+  const play=document.createElement('button'), sound=document.createElement('button');
+  play.type=sound.type='button';play.className=sound.className='btn';controls.append(play,sound);
+  $('photoStatus').before(controls);
+  activeLivePhoto=window.createLivePhotoPlayer({host:box,image:img,video,playButton:play,soundButton:sound,status:$('photoStatus')});
+  return;
+ }
  const video=document.createElement('video');video.src=imageURL(item.video);video.poster=img.src;video.preload='metadata';video.playsInline=true;video.controls=true;video.muted=item.kind==='live';video.hidden=true;
  box.append(video);
  const play=document.createElement('button');play.type='button';play.id='photoPanelPlayback';play.className='btn live-play';play.textContent=item.kind==='live'?'◉ 播放 Live Photo':'▶ 播放现场视频';

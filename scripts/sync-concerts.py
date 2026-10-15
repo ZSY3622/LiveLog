@@ -5,6 +5,7 @@ import json
 import re
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,7 +19,7 @@ def url(path):
 
 
 def fresh(source, target):
-    return target.exists() and target.stat().st_mtime >= source.stat().st_mtime
+    return target.exists() and target.stat().st_size > 0 and target.stat().st_mtime >= source.stat().st_mtime
 
 
 def photo_path(source):
@@ -49,18 +50,37 @@ def video_path(source):
     if fresh(source, target):
         return target
     target.parent.mkdir(exist_ok=True)
-    if shutil.which('ffmpeg'):
-        command = ['ffmpeg', '-y', '-i', str(source), '-map', '0:v:0',
+    ffmpeg = shutil.which('ffmpeg')
+    if not ffmpeg:
+        try:
+            import imageio_ffmpeg
+            ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
+        except (ImportError, RuntimeError):
+            pass
+    # A failed conversion must never become a seemingly fresh cached video.
+    with tempfile.NamedTemporaryFile(dir=target.parent, suffix='.mp4', delete=False) as handle:
+        temporary = Path(handle.name)
+    if ffmpeg:
+        command = [ffmpeg, '-hide_banner', '-loglevel', 'error', '-y', '-i', str(source), '-map', '0:v:0',
                    '-map', '0:a?', '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
-                   '-c:a', 'aac', '-movflags', '+faststart', str(target)]
+                   '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2',
+                   '-c:a', 'aac', '-movflags', '+faststart', str(temporary)]
     elif shutil.which('swift'):
         command = ['swift', '-module-cache-path', '/tmp/livelog-swift-cache',
-                   str(ROOT / 'scripts' / 'convert-video.swift'), str(source), str(target)]
+                   str(ROOT / 'scripts' / 'convert-video.swift'), str(source), str(temporary)]
     elif source.suffix.lower() == '.mp4':
+        temporary.unlink(missing_ok=True)
         return source
     else:
-        raise SystemExit('转换 Live Photo 的 MOV 需要 macOS Swift 或 ffmpeg。')
-    subprocess.run(command, check=True)
+        temporary.unlink(missing_ok=True)
+        raise SystemExit('转换 Live Photo 的 MOV 需要安装 scripts/requirements.txt、macOS Swift 或 ffmpeg。')
+    try:
+        subprocess.run(command, check=True)
+        if not temporary.exists() or temporary.stat().st_size == 0:
+            raise RuntimeError(f'视频转换未生成有效文件：{source}')
+        temporary.replace(target)
+    finally:
+        temporary.unlink(missing_ok=True)
     return target
 
 
