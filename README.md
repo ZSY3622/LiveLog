@@ -26,43 +26,44 @@ python3 -m http.server 8765 --bind 127.0.0.1
 
 部署到 GitHub Pages 时，发布源根目录必须包含空文件 `.nojekyll`（本项目已提供）。项目直接发布静态文件，无需 Jekyll 构建；该标记用于避免 Jekyll 忽略 `_web/` 等下划线开头的素材目录，否则转换后的海报和现场照片会返回 404。更新时一并提交该文件与 `public/concert/**/_web/` 中的素材，等待 Pages 部署完成后刷新页面。若改为从 `docs/` 或其他目录发布，也需要将该标记放在对应发布源根目录。
 
-演出基本信息读取上方表格；补充信息保存在 `public/concert/metadata.json`，目前包含从海报整理的 2026-12-06 孙燕姿广州站。素材按以下结构存放，文件扩展名不区分大小写：
+演出基本信息读取上方表格，补充信息在 `public/concert/metadata.json`。静态海报和照片的存放方式不变；每张实况图可使用一个子文件夹，放入同名 HEIC 和 MOV，例如：
 
 ```text
-public/concert/2024-10-20/
-  poster.png
+public/concert/2025-07-13/
+  poster.JPG
   live/
-    IMG_7706.HEIC
-    IMG_7706.MOV     # Live Photo 动态部分（若有）
+    IMG_0136/
+      IMG_0136.HEIC
+      IMG_0136.MOV
 ```
 
-更新表格或添加素材后，重新生成清单：
+`live/` 下可放置多个实况图子文件夹。扫描会递归读取，按“同一文件夹、相同文件主名”配对，主名和扩展名匹配不区分大小写；同名文件分散在不同文件夹时不会误配。旧的 `live/IMG_9573.HEIC + live/IMG_9573.mov` 平铺结构仍可使用。隐藏文件和 `_web/` 中已有生成文件不会被当作新增素材。
+
+更新表格或添加素材后重新生成清单：
 
 ```sh
 python3 -m pip install -r scripts/requirements.txt
 python3 scripts/sync-concerts.py
 ```
 
-脚本生成 `public/concert-data.js`，HEIC 转换后的 JPEG 和视频转换后的 MP4 保存在对应素材目录的 `_web` 子目录，原始文件保留。将清单及转换文件一并部署后，浏览器无需额外依赖。未知日期目录缺少演出信息时会明确提示补充，避免生成虚构记录。
+`public/concert-data.js` 自动记录实况图的原始 HEIC/MOV 地址，不生成实况图的 JPEG/MP4，不需要 ffmpeg 或 Swift。海报、没有配套视频的单张 HEIC 继续按原方式转为 `_web/` 内的 JPEG，普通图片路径不变；未配对的视频直接作为现场视频展示。旧的实况转换文件不再用于实况展示，确认清单未引用后可以删除；仍被引用的静态转换图片需要保留。
 
-Apple Live Photo 需要同时从“照片”导出静态照片和配套视频（例如“导出未修改的原片”），使用同名文件放入同一 `live` 目录。脚本自动配对 `HEIC/JPG + MOV/MP4`：HEIC 转为 JPEG，MOV 转为浏览器兼容的 H.264/AAC MP4。视频转换优先使用已安装的 ffmpeg，其次使用 Python 依赖自带的 imageio-ffmpeg，最后尝试 macOS Swift。转换成功后才替换目标视频，避免失败后留下空文件并被缓存复用。所有处理均在本机完成。
+播放器使用本地保存的 [thun888/LivePhoto 1.2.0](https://github.com/thun888/LivePhoto)，位于 `public/vendor/live-photo/1.2.0/`。HEIC 在访问者浏览器中通过组件解码为内存图片，MOV 交给浏览器直接播放，素材不会上传第三方服务。`live-photo.js` 负责项目接入、生命周期和键盘操作。版本、许可证与可复现的本地保存步骤见该目录的 `README.md`。
 
-在演出详情中点击带 `◉ LIVE` 标记的照片，打开实况查看器。桌面鼠标悬停、手机按住照片或按住空格/回车播放，离开或松开后返回静态照片；也可以点击“播放实况”完整播放。默认静音，可点击“开启声音”。播放结束、切换照片、关闭弹窗或切到后台会停止播放，视频按需加载。开启系统“减少动态效果”时不触发悬停播放，仍可主动播放。
+点击相册中带 `◉ LIVE` 标记的照片打开查看器；悬停或按住组件的实况图标播放，离开或松开停止，也可点击下方“播放实况”。默认静音，可开启声音。拼贴墙与相册缩略图只加载照片，不预加载或播放 MOV；进入查看器后按需加载视频。关闭、切换照片或切到后台会停止播放并释放组件资源。
 
-目前陶喆 2025-06-01 场次的 `IMG_9573.HEIC + IMG_9573.mov` 已接入实况展示。只有 HEIC 的照片继续按静态照片展示，未配对的视频按普通现场视频展示。上传 GitHub 时需要一并提交 `live-photo.js`、更新后的页面文件与 `public/concert-data.js`，以及 `_web/` 中新生成的 JPEG/MP4，并保留 `.nojekyll`。
+原始 MOV 的播放能力取决于浏览器和系统的视频解码支持，组件不执行视频转码。无法播放时会保留照片并显示提示。请使用 HTTP 预览；直接打开 `file://` 文件可能使 HEIC 的读取请求受限。
 
-参考实现：
+发布到 GitHub Pages 时，一并提交更新后的清单、页面与适配器、原始 HEIC/MOV，以及整个 `public/vendor/live-photo/1.2.0/`（含 `931.bundle.js` 解码分块与许可证），并保留 `.nojekyll`。静态图片所需 `_web/` 文件仍需部署。
 
-| 项目 | 参考内容 |
-| --- | --- |
-| [tumblr/laphs](https://github.com/tumblr/laphs) | 用静态关键帧与视频配对展示 Live Photo，提供播放、停止与预览接口 |
-| [thun888/LivePhoto](https://github.com/thun888/LivePhoto) | 图片与视频叠放、鼠标/触摸播放、静音控制等实况图交互 |
-
-本项目将这些交互思路实现为本地原生播放器 `live-photo.js`，保持静态网站架构。交互逻辑可使用 Node.js 内置测试运行：
+验证命令：
 
 ```sh
+node --check app.js
+node --check live-photo.js
 node --test scripts/test-live-photo.cjs
 python3 -m unittest discover -s scripts -p 'test_sync_concerts.py'
+git diff --check
 ```
 
 本地档案与浏览器新增记录分开保存。重新生成素材清单后，已有浏览器也会读取最新本地档案；新增和隐藏记录保存在当前浏览器，可通过页尾导出 JSON 备份。

@@ -10,9 +10,9 @@ LiveLog 是个人演唱会足迹与现场记忆的静态网站。首页采用 EC
 
 ## 技术结构
 
-- 前端使用原生 HTML、CSS 和 JavaScript，无前端框架、npm 依赖或打包流程。
-- Python 脚本负责整理演出数据、扫描素材和转换 HEIC。
-- 视频优先通过 ffmpeg 转换；没有 ffmpeg 时尝试调用 macOS Swift 与 AVFoundation。
+- 前端使用原生 HTML、CSS 和 JavaScript，无前端框架或运行时构建步骤；实况图使用本地固定版本 thun888/LivePhoto 1.2.0。
+- Python 脚本负责整理演出数据和扫描素材；仅静态海报、未配对的单张 HEIC 沿用 JPEG 转换。
+- 实况图清单直接引用原始 HEIC/MOV，不提前转换实况图片或视频，不依赖 ffmpeg/Swift。
 - 网站没有后端、数据库或账号系统，可直接作为静态网站部署。
 - GitHub Pages 发布源根目录必须保留 `.nojekyll`，跳过 Jekyll 构建，防止 `_web/` 素材被排除。更改发布源目录或部署打包方式时，应确保该标记随发布文件一起提供。
 
@@ -21,20 +21,21 @@ LiveLog 是个人演唱会足迹与现场记忆的静态网站。首页采用 EC
 | `index.html` | 首页结构、原始页面样式与主题初始化脚本 |
 | `concert.css` | 本地海报、现场相册、照片查看器等补充样式，在原始样式之后加载 |
 | `app.js` | 轮播、统计、筛选、详情、相册、弹窗与浏览器记录管理 |
-| `live-photo.js` | 实况图的照片/视频叠放、悬停/按住播放、静音与销毁清理，在 `app.js` 前加载 |
+| `live-photo.js` | thun888/LivePhoto 项目适配器，处理缩略图、生命周期、键盘和播放状态，在 `app.js` 前加载 |
+| `public/vendor/live-photo/1.2.0/` | 固定版本上游组件、HEIC 解码分块、样式、许可证和本地保存说明 |
 | `README.md` | 演出基本信息表和用户使用说明，也是数据生成脚本的输入 |
 | `public/concert/metadata.json` | 按日期补充或覆盖演出信息 |
 | `public/concert/YYYY-MM-DD/` | 对应日期的海报和现场素材 |
 | `public/concert-data.js` | 自动生成的演出清单，向页面提供 `window.CONCERT_DATA` |
 | `scripts/sync-concerts.py` | 读取演出表、合并补充信息、扫描素材并生成清单 |
-| `scripts/convert-video.swift` | 将现场视频导出为 MP4 |
-| `scripts/requirements.txt` | HEIC 转换依赖 Pillow、pillow-heif，以及提供视频转换程序的 imageio-ffmpeg |
+| `scripts/requirements.txt` | 静态 HEIC 转换依赖 Pillow、pillow-heif |
+| `scripts/vendor-live-photo.py` | 校验并保存固定版本 npm 发布包，仅增加现有 Player 类的导出 |
 
 ## 数据来源与更新
 
 1. 从 `README.md` 的 Markdown 表格读取日期、演唱会名称、歌手、城市、场馆、座位和票价。
 2. 合并 `public/concert/metadata.json`。同日期的补充字段覆盖表格字段，也可添加表格中尚未记录的演出。
-3. 扫描日期目录中的海报和 `live/` 素材，转换需要兼容处理的图片、视频。
+3. 扫描日期目录中的海报并递归扫描 `live/`，配对实况原片；只对未配对的静态 HEIC 执行 JPEG 转换。
 4. 生成 `public/concert-data.js`，页面加载该文件后再运行 `app.js`。
 
 修改演出信息应编辑源表或 `metadata.json`，然后执行同步脚本；不要直接维护生成清单。清单与转换文件需要随网站一起提交和部署。
@@ -51,20 +52,24 @@ public/concert/
   2024-10-20/
     poster.png
     live/
-      IMG_7706.HEIC
-      IMG_7706.MOV
+      IMG_7706.HEIC      # 原有单张静态照片保持平铺
       _web/
         IMG_7706.jpg
-        IMG_7706.mp4
+  2025-07-13/
+    poster.JPG
+    live/
+      IMG_0136/          # 每张实况图一个子文件夹
+        IMG_0136.HEIC
+        IMG_0136.MOV
 ```
 
 - 海报文件名为 `poster`，扩展名不区分大小写。
-- 现场照片和视频放在对应日期的 `live/` 目录中；扫描范围为该目录的直属文件，不递归扫描子目录。
-- Apple Live Photo 通过相同文件主名配对，例如 `IMG_7706.HEIC` 与 `IMG_7706.MOV`，主名匹配不区分大小写。
+- 现场照片和视频放在对应日期的 `live/` 目录中，实况图可按组放入子文件夹。扫描递归读取，排除隐藏文件和 `_web/`。
+- Apple Live Photo 在同一文件夹内通过相同文件主名配对，例如 `IMG_0136.HEIC` 与 `IMG_0136.MOV`，主名匹配不区分大小写，不能跨文件夹配对。旧平铺配对结构继续支持。
 - 单独的 HEIC 是静态照片，不能据此认定已具备 Live Photo 动态部分。没有配套视频时，不显示动态播放标识。
 - 未配对的视频作为普通现场视频展示。
-- HEIC/HEIF 转换为 JPEG；需要转换的视频输出为 MP4，WebM 保留原文件。
-- 转换文件保存在原素材所在目录的 `_web/` 下，按修改时间复用已有结果。
+- 实况 HEIC/MOV 保留原始路径，由 thun888/LivePhoto 在浏览器解码与播放；静态海报和未配对的 HEIC/HEIF 继续转换为 JPEG，未配对的视频直接引用原文件。
+- 静态转换文件保存在原素材所在目录的 `_web/` 下，按修改时间复用已有结果。旧实况转换文件可保留，但清单不再引用它们。
 - 保留原始照片、视频和海报，不覆盖原片，也不要将私人素材上传至外部服务。
 - 前端素材路径相对于项目根目录，保持 `public/` 路径；不要写入开发者机器的绝对路径。
 
@@ -74,11 +79,13 @@ public/concert/
 - 日期判断使用 `Asia/Shanghai` 时区。未来演出标为“待赴现场”，不计入已看场次、城市、音乐人和年份统计。
 - 演出详情展示海报、场馆、日期、座位、票价以及对应现场相册。
 - 拼贴墙优先展示该场演出的现场照片，没有现场素材时展示海报。
-- 相册支持放大、前后切换和键盘操作。实况查看器支持鼠标悬停、手机按住、键盘空格/回车按住和点击按钮播放，默认静音，可手动开启声音。
-- 实况视频按需加载，静态照片在视频成功播放后才淡出；松开、离开、播放结束、切换照片、关闭或切到后台时停止，减少动态效果偏好会禁用悬停播放。
-- 更改实况交互后执行 `node --test scripts/test-live-photo.cjs`；更改视频缓存/转换后执行 `python3 -m unittest discover -s scripts -p 'test_sync_concerts.py'`，转换应使用临时文件并在成功后替换目标，避免复用失败产物。
+- 相册支持放大、前后切换和键盘操作。实况查看器通过上游组件支持悬停/按住实况图标、键盘操作和下方按钮播放，默认静音，可手动开启声音。
+- 缩略图只解码 HEIC，不加载 MOV；查看器的视频按需加载。松开图标、离开、播放结束、切换照片、关闭或切到后台时停止，减少动态效果偏好会禁用悬停播放。组件需销毁观察器并释放 Blob URL，包括异步加载晚于关闭完成的情况。
+- 更改实况适配器后执行 `node --test scripts/test-live-photo.cjs`；更改素材扫描后执行 `python3 -m unittest discover -s scripts -p 'test_sync_concerts.py'`。验证嵌套/平铺配对、同名组隔离、静态照片处理不变，以及实况原片不被提前转换。
 - 弹窗需保持焦点管理、Escape 关闭和滚动锁定，关闭照片查看器后返回演出详情。
 - 保留明暗主题、移动端布局、键盘可访问性和减少动态效果偏好。
+- 上游库的 `bundle.js`、`931.bundle.js`、`main.css` 和 MIT 许可证必须一起部署；网站运行不得依赖外部 CDN。库的渲染/解码/播放继续使用上游实现，项目接入与清理在适配器中维护。
+- 原始 MOV 播放取决于浏览器/系统编码支持；遇到不支持时显示提示并保留照片，不擅自改回提前转码。
 
 ## 浏览器存储
 

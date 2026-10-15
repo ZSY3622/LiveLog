@@ -1,78 +1,70 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const vm=require('node:vm');
 const fs=require('node:fs');
 const path=require('node:path');
-
+const vm=require('node:vm');
 class Element extends EventTarget {
- constructor(){
-  super();this.attributes=new Map();this.classes=new Set();this.paused=true;this.currentTime=0;
-  this.classList={add:(...names)=>names.forEach(n=>this.classes.add(n)),remove:(...names)=>names.forEach(n=>this.classes.delete(n)),contains:name=>this.classes.has(name)};
- }
- setAttribute(name,value){this.attributes.set(name,String(value))}
- removeAttribute(name){this.attributes.delete(name)}
- focus(){}
- setPointerCapture(){}
+ constructor(){super();this.attributes=new Map();this.classes=new Set();this.dataset={};this.paused=true;this.isConnected=true;this.classList={add:(...names)=>names.forEach(n=>this.classes.add(n)),remove:(...names)=>names.forEach(n=>this.classes.delete(n)),contains:n=>this.classes.has(n),toggle:(n,on)=>on?this.classes.add(n):this.classes.delete(n)}}
+ setAttribute(n,v){this.attributes.set(n,String(v))}
+ getAttribute(n){return this.attributes.get(n)||null}
+ removeAttribute(n){this.attributes.delete(n)}
+ replaceChildren(){this.cleared=true}
+ click(){this.dispatchEvent(new Event('click'))}
  play(){this.paused=false;return this.pending||Promise.resolve()}
  pause(){this.paused=true}
  load(){this.loaded=true}
 }
-function setup(reduced=false){
- const window=new Element(), document=new Element();
- window.matchMedia=()=>({matches:reduced});
- const elements=Object.fromEntries(['host','image','video','playButton','soundButton','status'].map(name=>[name,new Element()]));
- const context=vm.createContext({window,document,AbortController});
+function setup({preview=false,reduced=false}={}){
+ const revoked=[],statuses=[],states=[];
+ class UpstreamPlayer {
+  constructor(host,options){this.container=host;this.options=options;this.isMuted=true;this.observer={disconnect:()=>this.disconnected=true}}
+  init(){this.render();this.bindEvents()}
+  render(){this.renderedByUpstream=true;this.elements=Object.fromEntries(['video','image','wrapper','icon','volumeControl'].map(k=>[k,new Element()]));this.elements.video.setAttribute('src',this.options.videoSrc)}
+  bindEvents(){this.elements.volumeControl.addEventListener('click',()=>{this.isMuted=!this.isMuted;this.elements.video.muted=this.isMuted})}
+  async handleStart(){this.upstreamStarts=(this.upstreamStarts||0)+1;await this.elements.video.play();this.elements.wrapper.classList.add('zoom')}
+  handleStop(){this.elements.video.pause();this.elements.wrapper.classList.remove('zoom')}
+  showWarning(text){this.warning=text}
+  trackLoad(promise){return promise}
+  decodeHeic(){this.decodes=(this.decodes||0)+1;return Promise.resolve({decoded:true})}
+ }
+ const window=new Element(),document=new Element();window.LivePhoto={Player:UpstreamPlayer};window.matchMedia=()=>({matches:reduced});
+ const context=vm.createContext({window,document,AbortController,URL:{revokeObjectURL:url=>revoked.push(url)}});
  vm.runInContext(fs.readFileSync(path.join(__dirname,'../live-photo.js'),'utf8'),context);
- const controller=window.createLivePhotoPlayer(elements);
- const send=(target,type,properties={})=>target.dispatchEvent(Object.assign(new Event(type,{cancelable:true}),properties));
- return {...elements,window,document,controller,send};
+ const player=window.mountConcertLivePhoto({host:new Element(),imageSrc:'https://local/IMG.HEIC',videoSrc:'https://local/IMG.MOV',alt:'<title>',preview,onStatus:x=>statuses.push(x),onState:x=>states.push(x)});
+ player.init();
+ return {player,window,document,revoked,statuses,states};
 }
 const settle=()=>new Promise(resolve=>setImmediate(resolve));
 
-test('hover plays and leaving restores the still',async()=>{
- const s=setup();s.send(s.host,'pointerenter',{pointerType:'mouse'});await settle();
- assert.equal(s.host.classList.contains('is-playing'),true);
- s.send(s.host,'pointerleave');assert.equal(s.video.paused,true);
- assert.equal(s.host.classList.contains('is-playing'),false);
+test('uses upstream renderer with original HEIC/MOV and escaped metadata',()=>{
+ const {player}=setup();assert.equal(player.renderedByUpstream,true);
+ assert.equal(player.options.imageSrc,'https://local/IMG.HEIC');assert.equal(player.options.videoSrc,'https://local/IMG.MOV');assert.equal(player.options.alt,'&lt;title&gt;');
 });
-test('release while loading cannot reveal a late video',async()=>{
- const s=setup();let resolve;s.video.pending=new Promise(r=>resolve=r);
- s.send(s.host,'pointerdown',{button:0,pointerId:7});
- s.send(s.host,'pointerup',{pointerId:7});resolve();await settle();
- assert.equal(s.video.paused,true);assert.equal(s.host.classList.contains('is-playing'),false);
+test('thumbnail previews do not load or play MOV',async()=>{
+ const {player}=setup({preview:true});assert.equal(player.elements.video.getAttribute('src'),null);
+ await player.handleStart();assert.equal(player.upstreamStarts,undefined);
 });
-test('click playback survives pointerleave and supports sound and replay',async()=>{
- const s=setup();s.send(s.playButton,'click');await settle();
- s.send(s.host,'pointerleave');assert.equal(s.video.paused,false);
- s.send(s.soundButton,'click');assert.equal(s.video.muted,false);
- assert.match(s.status.textContent,/声音已开启/);
- s.send(s.video,'ended');assert.equal(s.host.classList.contains('is-playing'),false);
- s.send(s.playButton,'click');await settle();assert.equal(s.video.paused,false);
- s.send(s.playButton,'click');assert.equal(s.video.paused,true);
+test('release during a pending upstream play cannot leave video running',async()=>{
+ const {player}=setup();let resolve;player.elements.video.pending=new Promise(r=>resolve=r);
+ const pending=player.handleStart();player.handleStop();resolve();await pending;
+ assert.equal(player.elements.video.paused,true);assert.equal(player.elements.wrapper.classList.contains('zoom'),false);
 });
-test('reduced motion disables hover but permits explicit keyboard playback',async()=>{
- const s=setup(true);s.send(s.host,'pointerenter',{pointerType:'mouse'});await settle();
- assert.equal(s.video.paused,true);
- s.send(s.host,'keydown',{key:' ',repeat:false});await settle();assert.equal(s.video.paused,false);
- s.send(s.host,'keyup',{key:' '});assert.equal(s.video.paused,true);
+test('explicit playback and sound use upstream methods',async()=>{
+ const {player,states}=setup();await player.handleStart();assert.equal(player.upstreamStarts,1);
+ player.toggleSound();assert.equal(player.isMuted,false);assert.equal(states.at(-1).muted,false);
+ player.toggle();assert.equal(player.elements.video.paused,true);
 });
-test('backgrounding and pointer cancellation stop playback',async()=>{
- const s=setup();s.send(s.host,'pointerdown',{button:0,pointerId:1});await settle();
- s.send(s.host,'pointercancel',{pointerId:1});assert.equal(s.video.paused,true);
- s.send(s.playButton,'click');await settle();s.document.hidden=true;
- s.send(s.document,'visibilitychange');assert.equal(s.video.paused,true);
+test('reduced motion skips hover while preserving explicit play',async()=>{
+ const {player}=setup({reduced:true});await player.handleStart({type:'mouseenter'});assert.equal(player.upstreamStarts,undefined);
+ await player.handleStart();assert.equal(player.upstreamStarts,1);
 });
-test('video failure preserves the still and disables broken controls',async()=>{
- const s=setup();s.send(s.playButton,'click');await settle();s.send(s.video,'error');
- assert.equal(s.playButton.disabled,true);assert.equal(s.video.paused,true);
- assert.equal(s.host.classList.contains('is-playing'),false);
- assert.match(s.status.textContent,/静态照片/);
+test('closing cleans observer and blob URLs including late loads',async()=>{
+ const {player,revoked,statuses}=setup();let resolve;
+ const pending=new Promise(r=>resolve=r).then(()=>player.elements.image.setAttribute('src','blob:late'));
+ const load=player.trackLoad(pending);player.destroy();const count=statuses.length;resolve();await load;await settle();
+ assert.equal(player.disconnected,true);assert.equal(player.elements.video.loaded,true);assert.equal(player.elements.video.getAttribute('src'),null);assert.deepEqual(revoked,['blob:late']);assert.equal(statuses.length,count);
 });
-test('closing releases video, pending requests, accessibility and listeners',async()=>{
- const s=setup();let resolve;s.video.pending=new Promise(r=>resolve=r);
- s.send(s.playButton,'click');s.controller.destroy();resolve();await settle();
- assert.equal(s.video.paused,true);assert.equal(s.video.loaded,true);
- assert.equal(s.host.classList.contains('is-playing'),false);assert.equal(s.host.attributes.has('role'),false);
- s.send(s.playButton,'click');s.send(s.host,'pointerdown',{button:0,pointerId:1});
- assert.equal(s.video.paused,true);
+test('video error keeps the photo and reports a browser compatibility message',()=>{
+ const {player,statuses,states}=setup();player.elements.image.setAttribute('src','blob:still');player.elements.video.dispatchEvent(new Event('error'));
+ assert.equal(player.elements.image.getAttribute('src'),'blob:still');assert.match(statuses.at(-1),/原始视频/);assert.equal(states.at(-1).failed,true);
 });

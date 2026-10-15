@@ -19,8 +19,15 @@ const displayDate=d=>String(d||'').replace(/-/g,'.');
 const monthDay=d=>String(d||'').slice(5).replace('-','.');
 const today=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai'}).format(new Date());
 const upcoming=r=>r.date>today();
+let galleryLivePhotos=[], albumLivePhotos=[];
+function releaseLivePhotos(players){for(const player of players)player.destroy();players.length=0}
 const imgDiv=(r,priority=false,scene=false)=>{
  const el=document.createElement('div');el.className='picture';
+ if(scene&&r.media?.[0]?.kind==='live'){
+  const item=r.media[0];
+  galleryLivePhotos.push(window.mountConcertLivePhoto({host:el,imageSrc:imageURL(item.image),videoSrc:imageURL(item.video),alt:`${r.artist} · ${r.title}现场照片`,preview:true}));
+  return el;
+ }
  const src=imageURL(scene?(r.media?.[0]?.image||r.poster||r.imageUrl):(r.poster||r.imageUrl));
  if(src){const img=document.createElement('img');img.src=src;img.alt=`${r.artist} · ${r.title}${scene&&r.media?.length?'现场照片':'海报'}`;img.loading=priority?'eager':'lazy';img.decoding='async';img.addEventListener('error',()=>{img.remove();el.classList.add('image-missing')});el.append(img)}
  else el.classList.add('image-missing');
@@ -40,7 +47,7 @@ function stats(){
 }
 function filters(){const ys=[...new Set(data.map(year))].sort((a,b)=>b.localeCompare(a));if(activeYear!=='全部'&&!ys.includes(activeYear))activeYear='全部';const box=$('yearFilters');box.replaceChildren();for(const y of ['全部',...ys]){const b=document.createElement('button');b.className='chip'+(activeYear===y?' active':'');b.textContent=y==='全部'?'全部记忆':y+' 年';b.type='button';b.setAttribute('aria-pressed',String(activeYear===y));b.addEventListener('click',()=>{activeYear=y;filters();gallery();});box.append(b)}}
 function filtered(){return ordered(data).filter(r=>(activeYear==='全部'||year(r)===activeYear)&&(!search||[r.artist,r.title,r.city,r.venue,r.date].join(' ').toLocaleLowerCase().includes(search.toLocaleLowerCase())))}
-function gallery(){const box=$('gallery');box.replaceChildren();const rs=filtered();if(!rs.length){const empty=document.createElement('div');empty.className='no-result';empty.innerHTML='<strong>这里暂时没有匹配的回忆</strong><span>换个年份或关键词试试看，也可以记录一场新演出。</span>';box.append(empty);return}rs.forEach((r,i)=>{const el=document.createElement('article');el.className='memory-card';el.tabIndex=0;el.setAttribute('role','button');el.setAttribute('aria-label',`查看${r.artist}${r.title}演出详情`);el.innerHTML=`<div class="memory-tag">${safe(upcoming(r)?r.city+' · 待赴现场':r.city)}${r.media?.length?' · '+r.media.length+' 张现场':''}</div><div class="memory-arrow" aria-hidden="true">↗</div><div class="memory-info"><div class="memory-date">${safe(displayDate(r.date))}</div><h3>${safe(r.artist)}</h3><p>${safe(r.title)} <span>·</span> ${safe(r.city)}</p></div>`;el.prepend(imgDiv(r,false,true));el.addEventListener('click',()=>showDetail(r.id));el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();showDetail(r.id)}});box.append(el)});}
+function gallery(){releaseLivePhotos(galleryLivePhotos);const box=$('gallery');box.replaceChildren();const rs=filtered();if(!rs.length){const empty=document.createElement('div');empty.className='no-result';empty.innerHTML='<strong>这里暂时没有匹配的回忆</strong><span>换个年份或关键词试试看，也可以记录一场新演出。</span>';box.append(empty);return}rs.forEach((r,i)=>{const el=document.createElement('article');el.className='memory-card';el.tabIndex=0;el.setAttribute('role','button');el.setAttribute('aria-label',`查看${r.artist}${r.title}演出详情`);el.innerHTML=`<div class="memory-tag">${safe(upcoming(r)?r.city+' · 待赴现场':r.city)}${r.media?.length?' · '+r.media.length+' 张现场':''}</div><div class="memory-arrow" aria-hidden="true">↗</div><div class="memory-info"><div class="memory-date">${safe(displayDate(r.date))}</div><h3>${safe(r.artist)}</h3><p>${safe(r.title)} <span>·</span> ${safe(r.city)}</p></div>`;el.prepend(imgDiv(r,false,true));el.addEventListener('click',()=>showDetail(r.id));el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();showDetail(r.id)}});box.append(el)});}
 function timeline(){const list=$('timelineList');list.replaceChildren();const rs=ordered(data);if(!rs.length){list.innerHTML='<p class="timeline-empty">你的时间线还没有演出记录，去记录第一场吧。</p>';return}const groups=new Map();rs.forEach(r=>{let y=year(r);if(!groups.has(y))groups.set(y,[]);groups.get(y).push(r)});for(const [y,items] of groups){const section=document.createElement('div');section.className='timeline-year-block';const h=document.createElement('h3');h.className='timeline-year';h.textContent=y;section.append(h);items.forEach(r=>{const row=document.createElement('button');row.type='button';row.className='timeline-item';row.innerHTML=`<span class="when">${safe(monthDay(r.date))}</span><span><span class="who">${safe(r.artist)} · ${safe(r.title)}${upcoming(r)?' · 待赴现场':''}</span><span class="what" style="display:block">${safe(r.city)}${r.venue?' / '+safe(r.venue):''}</span></span><span class="go" aria-hidden="true">↗</span>`;row.addEventListener('click',()=>showDetail(r.id));section.append(row)});list.append(section)}}
 
 // 轮播仅在可见时自动运行，进度使用 transform 避免逐帧布局。
@@ -227,7 +234,7 @@ function syncModals(){
  heroPause('modal',Boolean(top));
 }
 function openModal(el){focusBeforeModal.set(el,document.activeElement);el.classList.add('show');syncModals();(el.querySelector('input')||el.querySelector('.modal-close'))?.focus()}
-function closeModal(el){if(el.id==='photoModal')releasePhoto();el.classList.remove('show');syncModals();focusBeforeModal.get(el)?.focus?.()}
+function closeModal(el){if(el.id==='photoModal')releasePhoto();if(el.id==='detailModal'){releaseLivePhotos(albumLivePhotos);$('detailAlbum').replaceChildren()}el.classList.remove('show');syncModals();focusBeforeModal.get(el)?.focus?.()}
 let albumRecord=null, photoIndex=0, activeLivePhoto=null;
 function releasePhoto(){
  activeLivePhoto?.destroy();activeLivePhoto=null;
@@ -235,6 +242,7 @@ function releasePhoto(){
  $('photoMedia').replaceChildren();$('photoPanelPlayback')?.remove();
 }
 function renderConcertDetail(r){
+ releaseLivePhotos(albumLivePhotos);
  const facts=$('detailFacts');facts.replaceChildren();
  for(const [label,value] of [['状态',upcoming(r)?'待赴现场':'已看现场'],['座位',r.seat||'未记录'],['票价',r.price?'¥ '+r.price:'未记录'],['日期',displayDate(r.date)]]){
   const item=document.createElement('div'), dt=document.createElement('dt'), dd=document.createElement('dd');
@@ -242,13 +250,18 @@ function renderConcertDetail(r){
  }
  const media=r.media||[], album=$('detailAlbum');album.replaceChildren();
  $('albumCount').textContent=media.length?`${media.length} 份现场记忆`:'';
- $('albumHelp').textContent=media.some(m=>m.kind==='live')?'带 ◉ LIVE 标记的是实况照片。点击放大后，鼠标悬停或按住照片即可播放。':media.length?'点击照片，放大重温那一晚。':'';
+ $('albumHelp').textContent=media.some(m=>m.kind==='live')?'带 ◉ LIVE 标记的是原始实况照片。点击放大后，悬停或按住 LIVE 图标播放。':media.length?'点击照片，放大重温那一晚。':'';
  if(!media.length){const empty=document.createElement('p');empty.className='album-empty';empty.textContent=upcoming(r)?'等到那一晚，把新的现场带回来。':'这一晚的照片，等你慢慢收藏。';album.append(empty);return}
  media.forEach((item,index)=>{
   const button=document.createElement('button');button.type='button';button.className='album-photo';
   button.setAttribute('aria-label',`查看第 ${index+1} 张现场${item.kind==='live'?' Live Photo':item.kind==='video'?'视频':'照片'}`);
-  const img=document.createElement('img');img.src=imageURL(item.image||r.poster);img.alt=`${r.artist} ${displayDate(r.date)} 现场 ${index+1}`;img.loading='lazy';
-  img.addEventListener('error',()=>{img.remove();button.textContent='照片暂时无法显示'});button.append(img);
+  if(item.kind==='live'){
+   const preview=document.createElement('div');preview.className='album-live-preview';button.append(preview);
+   albumLivePhotos.push(window.mountConcertLivePhoto({host:preview,imageSrc:imageURL(item.image),videoSrc:imageURL(item.video),alt:`${r.artist}现场 ${index+1}`,preview:true}));
+  }else{
+   const img=document.createElement('img');img.src=imageURL(item.image||r.poster);img.alt=`${r.artist} ${displayDate(r.date)} 现场 ${index+1}`;img.loading='lazy';
+   img.addEventListener('error',()=>{img.remove();button.textContent='照片暂时无法显示'});button.append(img);
+  }
   if(item.video){const badge=document.createElement('span');badge.className='media-badge';badge.textContent=item.kind==='live'?'◉ LIVE':'▶ 视频';button.append(badge)}
   button.addEventListener('click',()=>{albumRecord=r;photoIndex=index;renderPhoto();openModal($('photoModal'))});album.append(button);
  });
@@ -258,21 +271,22 @@ function renderPhoto(){
  const media=albumRecord.media, item=media[photoIndex], box=$('photoMedia');
  $('photoTitle').textContent=`${albumRecord.artist} · ${displayDate(albumRecord.date)} · ${photoIndex+1} / ${media.length}`;
  $('photoStatus').textContent='';$('photoPrev').disabled=$('photoNext').disabled=media.length<2;
+ if(item.kind==='live'){
+  const controls=document.createElement('div');controls.id='photoPanelPlayback';controls.className='live-photo-controls';
+  const play=document.createElement('button'), sound=document.createElement('button');
+  play.type=sound.type='button';play.className=sound.className='btn';play.textContent='◉ 播放实况';sound.textContent='开启声音';controls.append(play,sound);
+  $('photoStatus').textContent='正在读取原始 HEIC 照片…';$('photoStatus').before(controls);
+  activeLivePhoto=window.mountConcertLivePhoto({host:box,imageSrc:imageURL(item.image),videoSrc:imageURL(item.video),alt:`${albumRecord.artist}实况照片 ${photoIndex+1}`,
+   onStatus:message=>{$('photoStatus').textContent=message},
+   onState:({playing,muted,failed})=>{play.textContent=playing?'■ 停止实况':'◉ 播放实况';sound.textContent=muted?'开启声音':'关闭声音';play.setAttribute('aria-pressed',String(playing));sound.setAttribute('aria-pressed',String(!muted));play.disabled=sound.disabled=failed}
+  });
+  play.addEventListener('click',()=>activeLivePhoto?.toggle());sound.addEventListener('click',()=>activeLivePhoto?.toggleSound());
+  return;
+ }
  const img=document.createElement('img');img.src=imageURL(item.image||albumRecord.poster);img.alt=`${albumRecord.artist}现场照片 ${photoIndex+1}`;
  img.addEventListener('error',()=>{$('photoStatus').textContent='照片暂时无法显示，请检查本地素材。'});box.append(img);
  $('photoPanelPlayback')?.remove();
  if(!item.video)return;
- if(item.kind==='live'){
-  const video=document.createElement('video');video.preload='none';video.src=imageURL(item.video);video.poster=img.src;
-  const badge=document.createElement('span');badge.className='live-photo-label';badge.textContent='◉ LIVE · 实况';
-  box.append(video,badge);
-  const controls=document.createElement('div');controls.id='photoPanelPlayback';controls.className='live-photo-controls';
-  const play=document.createElement('button'), sound=document.createElement('button');
-  play.type=sound.type='button';play.className=sound.className='btn';controls.append(play,sound);
-  $('photoStatus').before(controls);
-  activeLivePhoto=window.createLivePhotoPlayer({host:box,image:img,video,playButton:play,soundButton:sound,status:$('photoStatus')});
-  return;
- }
  const video=document.createElement('video');video.src=imageURL(item.video);video.poster=img.src;video.preload='metadata';video.playsInline=true;video.controls=true;video.muted=item.kind==='live';video.hidden=true;
  box.append(video);
  const play=document.createElement('button');play.type='button';play.id='photoPanelPlayback';play.className='btn live-play';play.textContent=item.kind==='live'?'◉ 播放 Live Photo':'▶ 播放现场视频';

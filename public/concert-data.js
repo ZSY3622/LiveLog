@@ -53,9 +53,9 @@ window.CONCERT_DATA = [
     "media": [
       {
         "name": "IMG_0946.HEIC",
-        "image": "public/concert/2025-10-26/live/_web/IMG_0946.jpg",
         "original": "public/concert/2025-10-26/live/IMG_0946.HEIC",
-        "kind": "photo"
+        "kind": "photo",
+        "image": "public/concert/2025-10-26/live/_web/IMG_0946.jpg"
       }
     ]
   },
@@ -70,7 +70,16 @@ window.CONCERT_DATA = [
     "note": "",
     "id": "concert-2025-07-13",
     "poster": "public/concert/2025-07-13/poster.JPG",
-    "media": []
+    "media": [
+      {
+        "name": "IMG_0136/IMG_0136.HEIC",
+        "original": "public/concert/2025-07-13/live/IMG_0136/IMG_0136.HEIC",
+        "kind": "live",
+        "image": "public/concert/2025-07-13/live/IMG_0136/IMG_0136.HEIC",
+        "video": "public/concert/2025-07-13/live/IMG_0136/IMG_0136.MOV",
+        "videoOriginal": "public/concert/2025-07-13/live/IMG_0136/IMG_0136.MOV"
+      }
+    ]
   },
   {
     "date": "2025-06-01",
@@ -86,10 +95,10 @@ window.CONCERT_DATA = [
     "media": [
       {
         "name": "IMG_9573.HEIC",
-        "image": "public/concert/2025-06-01/live/_web/IMG_9573.jpg",
         "original": "public/concert/2025-06-01/live/IMG_9573.HEIC",
         "kind": "live",
-        "video": "public/concert/2025-06-01/live/_web/IMG_9573.mp4",
+        "image": "public/concert/2025-06-01/live/IMG_9573.HEIC",
+        "video": "public/concert/2025-06-01/live/IMG_9573.mov",
         "videoOriginal": "public/concert/2025-06-01/live/IMG_9573.mov"
       }
     ]
@@ -121,9 +130,9 @@ window.CONCERT_DATA = [
     "media": [
       {
         "name": "IMG_7706.HEIC",
-        "image": "public/concert/2024-10-20/live/_web/IMG_7706.jpg",
         "original": "public/concert/2024-10-20/live/IMG_7706.HEIC",
-        "kind": "photo"
+        "kind": "photo",
+        "image": "public/concert/2024-10-20/live/_web/IMG_7706.jpg"
       }
     ]
   },

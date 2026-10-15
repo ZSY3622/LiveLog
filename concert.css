@@ -33,14 +33,22 @@
 .photo-media { min-height: 160px; height: 75vh; display: flex; align-items: center; justify-content: center; }
 .photo-media img, .photo-media video { max-width: 100%; max-height: 100%; object-fit: contain; }
 .photo-media [hidden] { display: none; }
-.photo-media.live-photo-stage { position: relative; display: grid; cursor: pointer; touch-action: pan-y; user-select: none; }
-.live-photo-stage > img, .live-photo-stage > video { grid-area: 1 / 1; width: 100%; height: 100%; min-width: 0; min-height: 0; pointer-events: none; transition: opacity .18s ease; }
-.live-photo-stage > video { opacity: 0; }
-.live-photo-stage.is-playing > video { opacity: 1; }
-.live-photo-stage.is-playing > img { opacity: 0; }
-.live-photo-label { position: absolute; top: 14px; left: 14px; border-radius: 99px; padding: 6px 12px; color: white; background: rgba(0,0,0,.65); font-size: 11px; pointer-events: none; }
+.album-live-preview { width: 100%; height: 100%; }
+.thun-live-host > .live-photo { display: block; width: 100% !important; height: 100% !important; aspect-ratio: auto !important; }
+.thun-live-preview .controls, .thun-live-preview .warning { display: none; }
+.thun-live-preview > .live-photo { pointer-events: none; }
+.thun-live-preview .live-photo .container img { object-fit: cover; }
+.photo-media.thun-live-host { display: block; }
+.photo-media .live-photo .container img, .photo-media .live-photo .container video { object-fit: contain; }
+.photo-media .live-photo.zoom .container img, .photo-media .live-photo.zoom .container video { transform: none; }
+.photo-media .live-photo .controls { position: absolute; left: 14px; top: 14px; }
+.photo-media .live-photo .icon img, .photo-media .live-photo .volume-icon { object-fit: contain; }
+.photo-media .live-photo .warning { top: 45px; font-size: 12px; }
 .live-photo-controls { display: flex; justify-content: center; gap: 12px; margin-top: 10px; }
-@media(prefers-reduced-motion:reduce) { .live-photo-stage > img, .live-photo-stage > video { transition: none; } }
+@media(prefers-reduced-motion:reduce) {
+ .thun-live-host .live-photo .container img, .thun-live-host .live-photo .container video { transition: none; }
+ .thun-live-host .live-photo.zoom .icon img { animation: none; }
+}
 .photo-controls { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-top: 12px; }
 .photo-controls p { font-size: 12px; color: #fff; text-align: center; overflow-wrap: anywhere; }
 #photoStatus { text-align: center; font-size: 12px; color: #e4b863; min-height: 20px; }
