@@ -7,6 +7,8 @@ class Element extends EventTarget {
  constructor(){super();this.attributes=new Map();this.classes=new Set();this.dataset={};this.paused=true;this.isConnected=true;this.classList={add:(...names)=>names.forEach(n=>this.classes.add(n)),remove:(...names)=>names.forEach(n=>this.classes.delete(n)),contains:n=>this.classes.has(n),toggle:(n,on)=>on?this.classes.add(n):this.classes.delete(n)}}
  setAttribute(n,v){this.attributes.set(n,String(v))}
  getAttribute(n){return this.attributes.get(n)||null}
+ set src(value){this.setAttribute('src',value)}
+ get src(){return this.getAttribute('src')||''}
  removeAttribute(n){this.attributes.delete(n)}
  replaceChildren(){this.cleared=true}
  click(){this.dispatchEvent(new Event('click'))}
@@ -14,7 +16,7 @@ class Element extends EventTarget {
  pause(){this.paused=true}
  load(){this.loaded=true}
 }
-function setup({preview=false,reduced=false}={}){
+function setup({preview=false,reduced=false,imageSrc='https://local/IMG.HEIC'}={}){
  const revoked=[],statuses=[],states=[];
  class UpstreamPlayer {
   constructor(host,options){this.container=host;this.options=options;this.isMuted=options.mute;this.observer={disconnect:()=>this.disconnected=true}}
@@ -26,11 +28,13 @@ function setup({preview=false,reduced=false}={}){
   showWarning(text){this.warning=text}
   trackLoad(promise){return promise}
   decodeHeic(){this.decodes=(this.decodes||0)+1;return Promise.resolve({decoded:true})}
+  loadAndroidLivePhoto(src){this.fallbackSources=(this.fallbackSources||[]).concat(src)}
  }
- const window=new Element(),document=new Element();window.LivePhoto={Player:UpstreamPlayer};window.matchMedia=()=>({matches:reduced});
- const context=vm.createContext({window,document,AbortController,URL:{revokeObjectURL:url=>revoked.push(url)}});
+ const window=new Element(),document=new Element();document.baseURI='https://local/index.html';window.LivePhoto={Player:UpstreamPlayer};window.matchMedia=()=>({matches:reduced});
+ class TestURL extends URL {static revokeObjectURL(url){revoked.push(url)}}
+ const context=vm.createContext({window,document,AbortController,URL:TestURL});
  vm.runInContext(fs.readFileSync(path.join(__dirname,'../live-photo.js'),'utf8'),context);
- const player=window.mountConcertLivePhoto({host:new Element(),imageSrc:'https://local/IMG.HEIC',videoSrc:'https://local/IMG.MOV',alt:'<title>',preview,onStatus:x=>statuses.push(x),onState:x=>states.push(x)});
+ const player=window.mountConcertLivePhoto({host:new Element(),imageSrc,videoSrc:'https://local/IMG.MOV',alt:'<title>',preview,onStatus:x=>statuses.push(x),onState:x=>states.push(x)});
  player.init();
  return {player,window,document,revoked,statuses,states};
 }
@@ -69,4 +73,41 @@ test('closing cleans observer and blob URLs including late loads',async()=>{
 test('video error keeps the photo and reports a browser compatibility message',()=>{
  const {player,statuses,states}=setup();player.elements.image.setAttribute('src','blob:still');player.elements.video.dispatchEvent(new Event('error'));
  assert.equal(player.elements.image.getAttribute('src'),'blob:still');assert.match(statuses.at(-1),/原始视频/);assert.equal(states.at(-1).failed,true);
+});
+test('local HEIC uses a native image without fetching or decoding',()=>{
+ const src='file:///concert/live/IMG.HEIC', {player}=setup({imageSrc:src});
+ player.loadAndroidLivePhoto(src);
+ assert.equal(player.elements.image.src,src);
+ player.elements.image.dispatchEvent(new Event('load'));
+ assert.equal(player.nativeImagePending,false);
+ assert.equal(player.decodes,undefined);assert.equal(player.fallbackSources,undefined);
+});
+test('native HEIC failure falls back to upstream decoding over HTTP once',()=>{
+ const {player,statuses}=setup();player.loadAndroidLivePhoto(player.options.imageSrc);
+ player.elements.image.dispatchEvent(new Event('error'));
+ assert.deepEqual(Array.from(player.fallbackSources),[player.options.imageSrc]);
+ assert.equal(player.elements.image.getAttribute('src'),null);
+ assert.match(statuses.at(-1),/解码/);
+ player.elements.image.dispatchEvent(new Event('error'));
+ assert.equal(player.fallbackSources.length,1);assert.match(statuses.at(-1),/无法显示/);
+});
+test('unsupported file HEIC gives actionable instructions without a blocked fetch',()=>{
+ const src='file:///concert/IMG.heif', {player,statuses}=setup({imageSrc:src});
+ player.loadAndroidLivePhoto(src);player.elements.image.dispatchEvent(new Event('error'));
+ assert.equal(player.fallbackSources,undefined);assert.match(statuses.at(-1),/Safari 17.*HTTP/);
+});
+test('closing during native loading removes callbacks and never starts a fallback',()=>{
+ const {player,statuses}=setup();player.loadAndroidLivePhoto(player.options.imageSrc);player.destroy();
+ const count=statuses.length;player.elements.image.dispatchEvent(new Event('error'));
+ assert.equal(player.fallbackSources,undefined);assert.equal(statuses.length,count);
+});
+test('non-HEIC media keeps the upstream loader',()=>{
+ const {player}=setup();player.loadAndroidLivePhoto('https://local/still.jpg');
+ assert.deepEqual(Array.from(player.fallbackSources),['https://local/still.jpg']);
+});
+test('viewer attaches the original MOV only when playback is requested',async()=>{
+ const {player}=setup();assert.equal(player.elements.video.getAttribute('src'),null);
+ await player.handleStart({type:'click',cancelable:false});
+ assert.equal(player.elements.video.getAttribute('src'),player.options.videoSrc);
+ assert.equal(player.upstreamStarts,1);
 });

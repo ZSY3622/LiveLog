@@ -15,10 +15,37 @@
   init(){if(!this.disposed)super.init()}
   render(){
    const videoSrc=this.options.videoSrc;
-   if(this.preview)this.options.videoSrc='';
+   // Set the MOV source only when playback is requested, including on Safari.
+   this.options.videoSrc='';
    try{super.render()}finally{this.options.videoSrc=videoSrc}
    this.elements.video.preload='none';
-   if(this.preview)this.elements.video.removeAttribute('src');
+   this.elements.video.removeAttribute('src');
+  }
+  loadAndroidLivePhoto(src){
+   if(!/\.(heic|heif)(?:[?#]|$)/i.test(src))return super.loadAndroidLivePhoto(src);
+   // Native image loading works for file:// in Safari; fetch(file://) does not.
+   // Try the actual image rather than guessing decoder support from the UA.
+   const {image}=this.elements;
+   this.nativeImagePending=true;
+   const cleanup=()=>{image.removeEventListener('load',loaded);image.removeEventListener('error',failed);this.cancelNativeImage=null};
+   const loaded=()=>{this.nativeImagePending=false;cleanup()};
+   const failed=()=>{
+    this.nativeImagePending=false;cleanup();
+    if(this.disposed)return;
+    if(new URL(src,document.baseURI).protocol==='file:'){
+     this.onStatus('此浏览器无法直接显示本地 HEIC，请使用 Safari 17 或更新版本，或通过本地 HTTP 预览。');
+     return;
+    }
+    // Keep the upstream decoder for browsers without native HEIC support.
+    this.onStatus('正在解码原始 HEIC 照片…');
+    image.removeAttribute('src');this.imageSettled=false;this.isFinished=false;
+    this.elements.wrapper.classList.add('loading');
+    super.loadAndroidLivePhoto(src);
+   };
+   image.addEventListener('load',loaded);
+   image.addEventListener('error',failed);
+   this.cancelNativeImage=cleanup;
+   image.src=src;
   }
   async decodeHeic(buffer){
    const key=this.options.imageSrc;
@@ -43,7 +70,7 @@
    super.bindEvents();
    const listen=(target,name,handler)=>target.addEventListener(name,handler,{signal:this.events.signal});
    listen(this.elements.image,'load',()=>{this.positionControls();if(!this.disposed)this.onStatus('悬停或按住照片左上角的 LIVE 图标播放，点击声音图标切换声音。')});
-   listen(this.elements.image,'error',()=>{if(!this.disposed)this.onStatus('原始照片无法显示，请检查 HEIC 文件。')});
+   listen(this.elements.image,'error',()=>{if(!this.disposed&&!this.nativeImagePending)this.onStatus('原始照片无法显示，请检查 HEIC 文件。')});
    if(this.preview)return;
    const {icon,volumeControl,video}=this.elements;
    if(typeof ResizeObserver!=='undefined'){
@@ -97,6 +124,7 @@
    if(event.type==='mouseenter'&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
    const generation=++this.generation;this.wantsPlayback=true;
    this.onStatus('正在加载原始实况…');
+   if(!this.elements.video.getAttribute('src'))this.elements.video.setAttribute('src',this.options.videoSrc);
    await super.handleStart(event);
    if(this.disposed){this.releaseMedia();return}
    if(generation!==this.generation){if(!this.wantsPlayback)super.handleStop();return}
@@ -123,6 +151,7 @@
   }
   destroy(){
    this.disposed=true;this.handleStop();this.observer?.disconnect();this.layoutObserver?.disconnect();this.events.abort();
+   this.cancelNativeImage?.();
    this.releaseMedia();this.container.replaceChildren();
    this.container.classList.remove('thun-live-host','thun-live-preview');
   }
