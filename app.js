@@ -45,7 +45,12 @@ const imgDiv=(r,priority=false,scene=false)=>{
  return el;
 };
 function persist(){try{localStorage.setItem(KEY,JSON.stringify({deleted,custom:data.filter(r=>!defaults.some(d=>d.id===r.id))}));return true}catch{toast('浏览器禁止存储，建议导出备份');return false}}
-function toast(message){const el=$('toast');el.textContent=message;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2800)}
+function toast(message,withBrand=false){
+ const el=$('toast');el.textContent=message;
+ el.classList.toggle('toast-branded',withBrand);
+ if(withBrand){const icon=document.createElement('img');icon.src=document.documentElement.getAttribute('data-theme')==='light'?'public/livelog-icon-light.svg':'public/livelog-icon.svg';icon.setAttribute('data-brand-icon','');icon.alt='';icon.className='livelog-mark';icon.width=20;icon.height=20;el.prepend(icon)}
+ el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2800);
+}
 function stats(){
  const attended=data.filter(r=>!upcoming(r)), sorted=ordered(attended);
  $('statShows').innerHTML=`${pad(attended.length)}<span>场</span>`;
@@ -341,7 +346,7 @@ document.addEventListener('keydown',e=>{
   else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus()}
  }
 });
-$('addForm').addEventListener('submit',e=>{e.preventDefault();const v=new FormData(e.currentTarget);const r={id:(globalThis.crypto&&crypto.randomUUID?crypto.randomUUID():'record-'+Date.now()),artist:String(v.get('artist')).trim(),title:String(v.get('title')).trim(),date:String(v.get('date')),city:String(v.get('city')).trim(),venue:String(v.get('venue')||'').trim(),note:String(v.get('note')||'').trim(),imageUrl:imageURL(String(v.get('imageUrl')||'').trim()),art:Math.floor(Math.random()*6)};if(!r.artist||!r.title||!r.date||!r.city){toast('请填写完整的必填信息');return}data.push(r);persist();activeYear='全部';search='';$('searchInput').value='';rerender();closeModal($('addModal'));toast('✳ 已收藏这段闪闪发光的记忆');setTimeout(()=>$('memories').scrollIntoView({behavior:'smooth'}),100)});
+$('addForm').addEventListener('submit',e=>{e.preventDefault();const v=new FormData(e.currentTarget);const r={id:(globalThis.crypto&&crypto.randomUUID?crypto.randomUUID():'record-'+Date.now()),artist:String(v.get('artist')).trim(),title:String(v.get('title')).trim(),date:String(v.get('date')),city:String(v.get('city')).trim(),venue:String(v.get('venue')||'').trim(),note:String(v.get('note')||'').trim(),imageUrl:imageURL(String(v.get('imageUrl')||'').trim()),art:Math.floor(Math.random()*6)};if(!r.artist||!r.title||!r.date||!r.city){toast('请填写完整的必填信息');return}data.push(r);persist();activeYear='全部';search='';$('searchInput').value='';rerender();closeModal($('addModal'));toast('已收藏这段闪闪发光的记忆',true);setTimeout(()=>$('memories').scrollIntoView({behavior:'smooth'}),100)});
 $('deleteRecord').addEventListener('click',()=>{if(!currentDetail)return;if(!confirm('确定删除这条演出记录吗？此操作不可撤销。'))return;if(defaults.some(r=>r.id===currentDetail))deleted.push(currentDetail);data=data.filter(x=>x.id!==currentDetail);persist();rerender();closeModal($('detailModal'));currentDetail=null;toast('记录已删除')});
 $('searchInput').addEventListener('input',e=>{search=e.target.value.trim();gallery()});
 $('galleryToggle').addEventListener('click',()=>{
