@@ -18,6 +18,8 @@
     })();
   </script>
   <link rel="stylesheet" href="albums.css">
+  <script src="public/vendor/hls/1.7.3/hls.min.js" defer></script>
+  <script src="album-motion.js" defer></script>
   <script src="albums.js" defer></script>
 </head>
 <body>
@@ -55,28 +57,29 @@
           <div class="record-stage">
             <div class="stage-orbit" aria-hidden="true"></div>
             <div class="vinyl" aria-hidden="true"><div class="vinyl-label"><span>LIVELOG</span><strong>SIDE A</strong><span>DEMO COLLECTION</span></div></div>
-            <button type="button" class="hero-sleeve" id="featuredAlbum" aria-label="查看范特西专辑详情"><span class="cover-frame" id="featuredCover"></span></button>
-            <span class="stage-number" aria-hidden="true">01 — 08</span>
+            <button type="button" class="hero-sleeve" id="featuredAlbum" aria-label="查看 Solar Power 专辑详情"><span class="cover-frame" id="featuredCover"></span></button>
+            <span class="stage-number" aria-hidden="true">01 — 09</span>
           </div>
-          <div class="display-caption"><div><span class="eyebrow">FEATURED ALBUM</span><p>范特西 <span>/ 周杰伦</span></p></div><a class="hero-store" id="featuredStore" target="_blank" rel="noopener noreferrer" aria-label="在 Apple Music 查看范特西"></a></div>
+          <div class="display-caption"><div><span class="eyebrow">FEATURED ALBUM / MOTION COVER</span><p>Solar Power <span>/ Lorde</span></p></div><a class="hero-store" id="featuredStore" target="_blank" rel="noopener noreferrer" aria-label="在 Apple Music 查看 Solar Power"></a></div>
+          <div class="motion-toolbar"><span class="motion-status" id="featuredMotionStatus" role="status">静态封面 · 可播放动态封面</span><button type="button" class="motion-toggle" id="featuredMotionToggle" aria-pressed="false">▷ 播放动态封面</button></div>
         </div>
       </div>
     </section>
 
     <section class="stats" aria-label="演示收藏统计">
-      <div class="stat"><span class="stat-label">专辑收藏 <span>ALBUMS</span></span><p><strong id="albumCount">08</strong><span>张专辑</span></p></div>
-      <div class="stat"><span class="stat-label">黑胶唱片 <span>VINYL</span></span><p><strong id="vinylCount">04</strong><span>件演示</span></p></div>
+      <div class="stat"><span class="stat-label">专辑收藏 <span>ALBUMS</span></span><p><strong id="albumCount">09</strong><span>张专辑</span></p></div>
+      <div class="stat"><span class="stat-label">黑胶唱片 <span>VINYL</span></span><p><strong id="vinylCount">05</strong><span>件演示</span></p></div>
       <div class="stat"><span class="stat-label">镭射唱片 <span>COMPACT DISC</span></span><p><strong id="cdCount">04</strong><span>件演示</span></p></div>
-      <div class="stat"><span class="stat-label">收藏音乐人 <span>ARTISTS</span></span><p><strong id="artistCount">03</strong><span>位音乐人</span></p></div>
+      <div class="stat"><span class="stat-label">收藏音乐人 <span>ARTISTS</span></span><p><strong id="artistCount">04</strong><span>位音乐人</span></p></div>
     </section>
 
     <section class="collection" id="collection" aria-labelledby="collectionTitle">
       <div class="section-heading"><div><p class="eyebrow section-eyebrow"><span aria-hidden="true">✳</span> A LITTLE SHELF, A LOT OF MUSIC</p><h2 id="collectionTitle">每一张，都有回响<span class="gold">。</span></h2></div><button type="button" class="button" data-open-add><span aria-hidden="true">＋</span> 添加唱片</button></div>
       <div class="toolbar">
-        <div class="format-tabs" role="group" aria-label="筛选演示介质"><button type="button" class="filter active" data-format="all" aria-pressed="true">全部 <span id="allFilterCount">8</span></button><button type="button" class="filter" data-format="vinyl" aria-pressed="false"><span class="format-dot vinyl-dot" aria-hidden="true"></span>黑胶</button><button type="button" class="filter" data-format="cd" aria-pressed="false"><span class="format-dot cd-dot" aria-hidden="true"></span>CD</button></div>
+        <div class="format-tabs" role="group" aria-label="筛选演示介质"><button type="button" class="filter active" data-format="all" aria-pressed="true">全部 <span id="allFilterCount">9</span></button><button type="button" class="filter" data-format="vinyl" aria-pressed="false"><span class="format-dot vinyl-dot" aria-hidden="true"></span>黑胶</button><button type="button" class="filter" data-format="cd" aria-pressed="false"><span class="format-dot cd-dot" aria-hidden="true"></span>CD</button></div>
         <div class="collection-controls"><label class="search-control"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg><span class="sr-only">搜索专辑或歌手</span><input id="albumSearch" type="search" placeholder="搜索专辑、歌手…" autocomplete="off"></label><label class="sort-control"><span class="sr-only">唱片排序</span><select id="albumSort"><option value="default">陈列顺序</option><option value="title">专辑名称</option><option value="artist">音乐人</option></select><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></label></div>
       </div>
-      <div class="collection-meta"><p id="resultCount" role="status" aria-live="polite">共 8 张示例专辑</p><span>VINYL &amp; CD / SELECTED WITH LOVE</span></div>
+      <div class="collection-meta"><p id="resultCount" role="status" aria-live="polite">共 9 张示例专辑</p><span>VINYL &amp; CD / SELECTED WITH LOVE</span></div>
       <div class="record-grid" id="recordGrid"></div>
       <div class="empty-state" id="emptyState" hidden><span class="empty-record" aria-hidden="true">◎</span><h3>这一格，暂时留白。</h3><p>换一个关键词，或看看完整的唱片架。</p><button type="button" class="button" id="clearFilters">清空筛选</button></div>
       <p class="collection-note"><span class="status-dot"></span>这里展示的是示例专辑，黑胶 / CD 为演示分组，不代表实际版次或你的真实收藏。</p>
@@ -88,7 +91,7 @@
 
   <dialog class="modal" id="detailDialog" aria-labelledby="detailTitle">
     <button type="button" class="close-button icon-button" data-close aria-label="关闭专辑详情">×</button>
-    <div class="detail-layout"><div class="detail-art"><div class="cover-frame" id="detailCover"></div><span class="detail-art-caption">THE RECORD ROOM / LIVELOG</span></div><div class="detail-body"><p class="eyebrow">ALBUM / DEMO COLLECTION</p><h2 id="detailTitle"></h2><p id="detailArtist" class="detail-artist"></p><span class="medium-badge" id="detailFormat"></span><dl class="detail-facts"><div><dt>实体版本</dt><dd>未记录</dd></div><div><dt>购入日期</dt><dd>未记录</dd></div><div><dt>购入金额</dt><dd>未记录</dd></div><div><dt>品相</dt><dd>未记录</dd></div></dl><div class="detail-note"><h3>收藏笔记</h3><p id="detailNote">未记录</p></div><div class="detail-source" id="detailSource"></div><p class="detail-disclaimer">演示介质仅用于界面预览，未核实实体发行版本。</p></div></div>
+    <div class="detail-layout"><div class="detail-art"><div class="cover-frame" id="detailCover"></div><div class="motion-toolbar detail-motion-toolbar" id="detailMotionBar" hidden><span class="motion-status" id="detailMotionStatus" role="status"></span><button type="button" class="motion-toggle" id="detailMotionToggle" aria-pressed="false">▷ 播放动态封面</button></div><span class="detail-art-caption">THE RECORD ROOM / LIVELOG</span></div><div class="detail-body"><p class="eyebrow">ALBUM / DEMO COLLECTION</p><h2 id="detailTitle"></h2><p id="detailArtist" class="detail-artist"></p><span class="medium-badge" id="detailFormat"></span><dl class="detail-facts"><div><dt>实体版本</dt><dd>未记录</dd></div><div><dt>购入日期</dt><dd>未记录</dd></div><div><dt>购入金额</dt><dd>未记录</dd></div><div><dt>品相</dt><dd>未记录</dd></div></dl><div class="detail-note"><h3>收藏笔记</h3><p id="detailNote">未记录</p></div><div class="detail-source" id="detailSource"></div><p class="detail-disclaimer">演示介质仅用于界面预览，未核实实体发行版本。</p></div></div>
   </dialog>
 
   <dialog class="modal add-dialog" id="addDialog" aria-labelledby="addTitle">

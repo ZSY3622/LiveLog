@@ -21,6 +21,16 @@
     storeUrl: `https://music.apple.com/tw/album/${collectionId}?uo=4`,
     source: 'iTunes Store', note: '', order: index
   }));
+  // Public Apple Music page metadata, not an iTunes Search API video field.
+  records.unshift({
+    id: 'demo-1572758574', title: 'Solar Power', artist: 'Lorde', format: 'vinyl',
+    collectionId: 1572758574,
+    cover: 'https://is1-ssl.mzstatic.com/image/thumb/Video125/v4/45/f0/2a/45f02a56-ec27-3606-d353-e64d5219ffbb/Job26f0ef4b-791a-4d75-9641-c9a4d9dea1fa-122055170-PreviewImage_preview_image_nonvideo_sdr-Time1629834901812.png/600x600bb.jpg',
+    motionUrl: 'https://mvod.itunes.apple.com/itunes-assets/HLSMusic126/v4/4b/45/ed/4b45edd0-f27d-ad6a-c982-fe535228af5a/P359494374_default.m3u8',
+    storeUrl: 'https://music.apple.com/cn/album/solar-power/1572758574',
+    source: 'Apple Music', note: ''
+  });
+  records.forEach((record, index) => { record.order = index; });
   const badgeUrl = 'https://tools.applemediaservices.com/api/badges/listen-on-apple-music/badge/zh-tw?size=250x83';
   const $ = id => document.getElementById(id);
   const create = (tag, className, text) => {
@@ -43,6 +53,33 @@
   let dialogOpener = null;
   let scrollY = 0;
   let toastTimer;
+  let featuredMotion = null;
+  let detailMotion = null;
+  const cardMotionPlayers = [];
+
+  function motionControl(host, record, button, status) {
+    if (typeof window.mountAlbumMotionCover !== 'function') {
+      button.hidden = true;
+      if (status) status.textContent = '动态封面暂不可用，已显示静态封面';
+      return null;
+    }
+    const player = window.mountAlbumMotionCover({
+      host, src: record.motionUrl,
+      onState: ({ state, message }) => {
+        const active = state === 'playing' || state === 'loading';
+        button.textContent = active ? 'Ⅱ 暂停动态封面' : state === 'failed' ? '↻ 重试动态封面' : '▷ 播放动态封面';
+        button.setAttribute('aria-pressed', String(active));
+        button.setAttribute('aria-label', `${active ? '暂停' : '播放'}${record.title}动态封面`);
+        if (status) status.textContent = message;
+      }
+    });
+    button.onclick = () => player.toggle();
+    return player;
+  }
+  function suspendBackgroundMotion(suspended) {
+    featuredMotion?.setSuspended(suspended);
+    cardMotionPlayers.forEach(player => player.setSuspended(suspended));
+  }
 
   function renderCover(host, record, eager = false) {
     host.replaceChildren();
@@ -89,6 +126,8 @@
   }
 
   function renderRecords() {
+    cardMotionPlayers.forEach(player => player.destroy());
+    cardMotionPlayers.length = 0;
     const query = normalize($('albumSearch').value.trim());
     const visible = records.filter(record => (activeFormat === 'all' || record.format === activeFormat) && normalize(`${record.title} ${record.artist}`).includes(query));
     const sort = $('albumSort').value;
@@ -118,10 +157,18 @@
       button.addEventListener('click', () => showDetail(record, button));
       const source = create('div', 'card-source');
       const caption = create('span', 'source-caption');
-      caption.append(create('span', '', record.source ? '专辑资料 / iTunes' : '本次添加'), create('span', '', 'DEMO COLLECTION'));
+      caption.append(create('span', '', record.source === 'Apple Music' ? '专辑资料 / Apple Music' : record.source ? '专辑资料 / iTunes' : '本次添加'), create('span', '', 'DEMO COLLECTION'));
       source.append(caption);
       if (record.storeUrl) source.append(storeBadge(record));
       card.append(button, source);
+      if (record.motionUrl) {
+        const toggle = create('button', 'motion-toggle card-motion-toggle');
+        toggle.type = 'button';
+        toggle.setAttribute('aria-pressed', 'false');
+        card.append(toggle);
+        const player = motionControl(cover, record, toggle);
+        if (player) cardMotionPlayers.push(player);
+      }
       fragment.append(card);
     });
     $('recordGrid').replaceChildren(fragment);
@@ -138,19 +185,24 @@
     document.body.style.width = '100%';
     dialog.showModal();
     dialog.scrollTop = 0;
+    suspendBackgroundMotion(true);
     if (dialog === $('addDialog')) form.elements.namedItem('title').focus();
   }
 
   function showDetail(record, opener) {
+    detailMotion?.destroy();
+    detailMotion = null;
     $('detailTitle').textContent = record.title;
     $('detailArtist').textContent = record.artist;
     $('detailFormat').textContent = `${medium(record.format)} · 演示介质`;
     $('detailNote').textContent = record.note || '未记录';
     renderCover($('detailCover'), record, true);
     $('detailSource').replaceChildren();
-    if (record.storeUrl) $('detailSource').append(storeBadge(record), create('span', '', '专辑资料与封面来源\niTunes Store / Apple'));
+    if (record.storeUrl) $('detailSource').append(storeBadge(record), create('span', '', `专辑资料与封面来源\n${record.source} / Apple`));
     else $('detailSource').append(create('span', '', '本次添加的演示记录 · 刷新后恢复'));
     openDialog($('detailDialog'), opener);
+    $('detailMotionBar').hidden = !record.motionUrl;
+    if (record.motionUrl) detailMotion = motionControl($('detailCover'), record, $('detailMotionToggle'), $('detailMotionStatus'));
   }
 
   document.querySelectorAll('dialog').forEach(dialog => {
@@ -173,12 +225,14 @@
       if (event.target === dialog && (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom)) dialog.close();
     });
     dialog.addEventListener('close', () => {
+      if (dialog === $('detailDialog')) { detailMotion?.destroy(); detailMotion = null; }
       document.body.style.position = '';
       document.body.style.top = '';
       document.body.style.width = '';
       window.scrollTo({ top: scrollY, behavior: 'instant' });
       if (dialogOpener?.isConnected) dialogOpener.focus({ preventScroll: true });
       dialogOpener = null;
+      suspendBackgroundMotion(false);
     });
   });
 
@@ -283,6 +337,16 @@
   renderCover($('featuredCover'), records[0], true);
   storeBadge(records[0], $('featuredStore'));
   $('featuredAlbum').addEventListener('click', () => showDetail(records[0], $('featuredAlbum')));
+  featuredMotion = motionControl($('featuredCover'), records[0], $('featuredMotionToggle'), $('featuredMotionStatus'));
+  window.addEventListener('pagehide', () => {
+    featuredMotion?.setSuspended(true);
+    cardMotionPlayers.forEach(player => player.setSuspended(true));
+    detailMotion?.setSuspended(true);
+  });
+  window.addEventListener('pageshow', () => {
+    suspendBackgroundMotion(Boolean(document.querySelector('dialog[open]')));
+    detailMotion?.setSuspended(false);
+  });
   updateStats();
   renderRecords();
 })();
