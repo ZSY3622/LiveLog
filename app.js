@@ -45,7 +45,12 @@ const imgDiv=(r,priority=false,scene=false)=>{
  return el;
 };
 function persist(){try{localStorage.setItem(KEY,JSON.stringify({deleted,custom:data.filter(r=>!defaults.some(d=>d.id===r.id))}));return true}catch{toast('浏览器禁止存储，建议导出备份');return false}}
-function toast(message){const el=$('toast');el.textContent=message;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2800)}
+function toast(message,withBrand=false){
+ const el=$('toast');el.textContent=message;
+ el.classList.toggle('toast-branded',withBrand);
+ if(withBrand){const icon=document.createElement('img');icon.src=document.documentElement.getAttribute('data-theme')==='light'?'public/livelog-icon-light.svg':'public/livelog-icon.svg';icon.setAttribute('data-brand-icon','');icon.alt='';icon.className='livelog-mark';icon.width=20;icon.height=20;el.prepend(icon)}
+ el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2800);
+}
 function stats(){
  const attended=data.filter(r=>!upcoming(r)), sorted=ordered(attended);
  $('statShows').innerHTML=`${pad(attended.length)}<span>场</span>`;
@@ -65,9 +70,11 @@ function gallery(){
  if(!rs.length){const empty=document.createElement('div');empty.className='no-result';empty.innerHTML='<strong>这里暂时没有匹配的回忆</strong><span>换个年份或关键词试试看，也可以记录一场新演出。</span>';box.append(empty)}
  rs.forEach(r=>{
   const el=document.createElement('article');el.className='memory-card';el.tabIndex=0;el.setAttribute('role','button');el.setAttribute('aria-label',`查看${r.artist}${r.title}演出详情`);
-  el.innerHTML=`<div class="memory-tag">${safe(upcoming(r)?r.city+' · 待赴现场':r.city)}${r.media?.length?' · '+r.media.length+' 张现场':''}</div><div class="memory-arrow" aria-hidden="true">↗</div><div class="memory-info"><div class="memory-date">${safe(displayDate(r.date))}</div><h3>${safe(r.artist)}</h3><p>${safe(r.title)} <span>·</span> ${safe(r.city)}</p></div>`;
-  // Attach the slideshow host before mounting so it can find and observe its card.
-  const pictureHost=document.createElement('div');el.prepend(pictureHost);box.append(el);
+  const visual=document.createElement('div');visual.className='memory-visual'+(r.media?.length?'':' poster-only');
+  visual.innerHTML=`<div class="memory-tag">${safe(upcoming(r)?r.city+' · 待赴现场':r.city)}${r.media?.length?' · '+r.media.length+' 张现场':''}</div><div class="memory-arrow" aria-hidden="true">↗</div>`;
+  const info=document.createElement('div');info.className='memory-info';
+  info.innerHTML=`<div class="memory-date">${safe(displayDate(r.date))}</div><h3>${safe(r.artist)}</h3><p>${safe(r.title)} <span>·</span> ${safe(r.city)}</p>`;
+  const pictureHost=document.createElement('div');visual.prepend(pictureHost);el.append(visual,info);box.append(el);
   galleryPicture(r,pictureHost);
   el.addEventListener('click',()=>showDetail(r.id));
   el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();showDetail(r.id)}});
@@ -100,6 +107,7 @@ function startHeroClock(){
 function heroPause(reason,value){
  if(value){if(!heroPauses.has(reason)){stopHeroClock();heroPauses.add(reason);}}
  else {heroPauses.delete(reason);startHeroClock();}
+ if(['manual','hidden','modal','offscreen','reduced','page'].includes(reason))heroSpace.setPaused(reason,value);
 }
 function refreshHeroToggle(){
  const manual=heroPauses.has('manual');
@@ -109,13 +117,14 @@ function refreshHeroToggle(){
  $('heroToggle').setAttribute('aria-pressed',String(manual));
 }
 function setHeroCaption(r,animate){
- $('heroSlideMeta').textContent=r.date?`${displayDate(r.date)}  ·  ${r.city||'LIVE'}${upcoming(r)?' · 待赴现场':''}`:'THE SOUND OF MEMORIES';
+ $('heroSlideMeta').textContent=r.date?`${displayDate(r.date)}  ·  ${r.city||'LIVE'}${upcoming(r)?' · 待赴现场':''}`:'我的演唱会足迹';
  $('heroSlideTitle').textContent=r.title||'你的下一段现场记忆，从这里开始';
  $('heroSlideSub').textContent=r.artist||'Live, forever.';
  $('heroSlideTitle').title=$('heroSlideTitle').textContent;
  $('heroSlideSub').title=$('heroSlideSub').textContent;
  $('heroDateExact').textContent=r.date?displayDate(r.date):'待记录';
- $('heroShowVenue').textContent=r.venue||'现场见';
+ $('heroShowVenue').textContent=r.venue||'场馆未记录';
+ $('heroOpen').firstChild.textContent=r.id?'查看这场演出 ':'记录第一场演出 ';
  $('heroCount').innerHTML=`${pad(heroIndex+1)} <i>/</i> ${pad(heroItems.length)}`;
  const caption=$('heroCaptionCopy');
  caption.classList.remove('animate');
@@ -123,60 +132,31 @@ function setHeroCaption(r,animate){
 }
 function createHeroCard(record,index){
  const btn=document.createElement('button');
- btn.type='button';btn.className='hero-stack-card';btn.dataset.index=String(index);btn.setAttribute('role','listitem');
- btn.setAttribute('aria-label',`${record.artist||'演唱会'}，${record.title||'现场记忆'}，${record.city||''}`);
- btn.append(imgDiv(record,index===0));
- const meta=document.createElement('div');meta.className='hero-stack-meta';
- const city=document.createElement('span');city.className='hero-stack-city';city.textContent=record.city||'LIVE';
- meta.append(city);
- const copy=document.createElement('div');copy.className='hero-stack-copy';
- const kicker=document.createElement('small');kicker.textContent=record.date?displayDate(record.date):'LIVE ARCHIVE';
- const artist=document.createElement('strong');artist.textContent=record.artist||'Live, forever.';
- const title=document.createElement('span');title.textContent=record.title||record.note||'你的下一段现场记忆，从这里开始';
- copy.append(kicker,artist,title);
- btn.append(meta,copy);
- btn.addEventListener('click',()=>setHeroSlide(index));
+ btn.type='button';btn.className='hero-stack-card';btn.dataset.index=String(index);
+ btn.dataset.description=`${record.artist||'演唱会'}，${record.title||'现场记忆'}，${record.city||''}`;
+ const art=document.createElement('span');art.className='hero-poster-art';art.append(imgDiv(record,index===0));
+ btn.append(art);
+ btn.addEventListener('click',()=>{
+  if(index===heroIndex){if(record.id)showDetail(record.id);else openAdd()}
+  else setHeroSlide(index);
+ });
  return btn;
 }
-function relativeCardOffset(index){
- const total=heroItems.length;
- let diff=index-heroIndex;
- if(diff>total/2)diff-=total;
- if(diff<-total/2)diff+=total;
- return diff;
-}
 function layoutHeroCards(){
- const stage=$('heroCardStage');
- const cards=Array.from(stage.children);
- const compact=window.innerWidth<=540, tablet=window.innerWidth<=820;
- const nearShift=compact?74:tablet?96:118;
- const farShift=compact?116:tablet?154:206;
- cards.forEach((card,index)=>{
-  const diff=relativeCardOffset(index), abs=Math.abs(diff);
-  const tx=abs===0?0:(abs===1?Math.sign(diff)*nearShift:Math.sign(diff)*farShift);
-  const ty=abs===0?0:(abs===1?18:36);
-  const scale=abs===0?1:(abs===1?.88:.74);
-  const rotate=abs===0?0:(diff<0?-7.5:7.5);
-  const rotateY=abs===0?0:(diff<0?17:-17);
-  const opacity=abs===0?1:(abs===1?.72:(abs===2?.28:0));
-  card.classList.toggle('is-current',abs===0);
-  card.classList.toggle('is-near',abs===1);
-  card.classList.toggle('is-far',abs>=2);
-  card.classList.toggle('is-hidden',abs>2);
-  card.style.setProperty('--tx',`${tx}px`);
-  card.style.setProperty('--ty',`${ty}px`);
-  card.style.setProperty('--scale',scale);
-  card.style.setProperty('--rotate',`${rotate}deg`);
-  card.style.setProperty('--rotateY',`${rotateY}deg`);
-  card.style.setProperty('--opacity',opacity);
-  card.style.setProperty('--z',String(30-abs));
-  card.setAttribute('aria-current',String(abs===0));
-  card.tabIndex=abs<=2?0:-1;
-  if(abs===0){card.title='当前卡片';}
-  else if(diff<0){card.title='点击切换到上一张';}
-  else {card.title='点击切换到下一张';}
+ const stage=$('heroCardStage'),width=stage.clientWidth||window.innerWidth;
+ Array.from(stage.children).forEach((card,index)=>{
+  const pose=window.LiveLogHeroSpace.posterPose(index,heroIndex,heroItems.length,width);
+  card.classList.toggle('is-current',pose.offset===0);
+  card.classList.toggle('is-hidden',!pose.visible);
+  for(const [name,value] of Object.entries({tx:`${pose.x}px`,ty:`${pose.y}px`,tz:`${pose.depth}px`,scale:pose.scale,rotate:`${pose.rotate}deg`,rotateY:`${pose.rotateY}deg`,opacity:pose.opacity,z:pose.z}))card.style.setProperty(`--${name}`,value);
+  card.setAttribute('aria-current',String(pose.offset===0));
+  card.setAttribute('aria-hidden',String(!pose.visible));
+  card.setAttribute('aria-label',`${pose.offset===0?'查看演出详情':'切换到'}：${card.dataset.description}`);
+  card.tabIndex=pose.visible?0:-1;
+  card.title=pose.offset===0?'点击查看演出详情':'点击切换演出';
  });
 }
+const heroSpace=window.LiveLogHeroSpace.mount({host:$('posterSpace'),stage:$('heroCardStage'),root:document.querySelector('.hero')});
 function setHeroTracks(){
  const bars=heroBars();
  bars.forEach((fill,i)=>{
@@ -222,13 +202,15 @@ $('heroNext').addEventListener('click',()=>setHeroSlide(heroIndex+1));
 $('heroToggle').addEventListener('click',()=>{heroPause('manual',!heroPauses.has('manual'));refreshHeroToggle();});
 $('heroCarousel').addEventListener('pointerenter',e=>{if(e.pointerType==='mouse')heroPause('hover',true)});
 $('heroCarousel').addEventListener('pointerleave',e=>{if(e.pointerType==='mouse')heroPause('hover',false)});
+$('heroCarousel').addEventListener('focusin',()=>heroPause('focus',true));
+$('heroCarousel').addEventListener('focusout',e=>{if(!$('heroCarousel').contains(e.relatedTarget))heroPause('focus',false)});
 $('heroCarousel').addEventListener('keydown',e=>{
  if(e.key==='ArrowLeft'){e.preventDefault();setHeroSlide(heroIndex-1)}
  if(e.key==='ArrowRight'){e.preventDefault();setHeroSlide(heroIndex+1)}
 });
 let heroTouchX=0,heroTouchY=0;
-$('heroCarousel').addEventListener('touchstart',e=>{heroTouchX=e.changedTouches[0].screenX;heroTouchY=e.changedTouches[0].screenY},{passive:true});
-$('heroCarousel').addEventListener('touchend',e=>{
+$('posterSpace').addEventListener('touchstart',e=>{heroTouchX=e.changedTouches[0].screenX;heroTouchY=e.changedTouches[0].screenY},{passive:true});
+$('posterSpace').addEventListener('touchend',e=>{
  const dx=e.changedTouches[0].screenX-heroTouchX,dy=e.changedTouches[0].screenY-heroTouchY;
  if(Math.abs(dx)>45&&Math.abs(dx)>Math.abs(dy)*1.4)setHeroSlide(heroIndex+(dx<0?1:-1));
 },{passive:true});
@@ -241,8 +223,10 @@ if('IntersectionObserver' in window){
 }
 HERO_REDUCED.addEventListener?.('change',e=>heroPause('reduced',e.matches));
 window.addEventListener('resize',()=>layoutHeroCards(),{passive:true});
-if(HERO_REDUCED.matches)heroPauses.add('reduced');
-if(document.hidden)heroPauses.add('hidden');
+if(HERO_REDUCED.matches)heroPause('reduced',true);
+if(document.hidden)heroPause('hidden',true);
+window.addEventListener('pagehide',()=>heroPause('page',true));
+window.addEventListener('pageshow',()=>heroPause('page',false));
 refreshHeroToggle();
 
 function rerender(){stats();filters();gallery();timeline();buildCarousel()}
@@ -327,11 +311,12 @@ $('photoPrev').addEventListener('click',()=>movePhoto(-1));
 $('photoNext').addEventListener('click',()=>movePhoto(1));
 function showDetail(id){const r=data.find(r=>r.id===id);if(!r)return;currentDetail=id;$('detailImage').replaceChildren(imgDiv(r,true));$('detailDate').textContent=displayDate(r.date)+' · '+r.city;$('detailTitle').textContent=r.artist+' · '+r.title;$('detailSub').textContent=r.venue||r.city;$('detailNote').textContent=r.note||'';renderConcertDetail(r);openModal($('detailModal'))}
 function openAdd(){$('addForm').reset();openModal($('addModal'))}
+$('addRecord').addEventListener('click',openAdd);
 for(const id of ['closeAdd','cancelAdd'])$(id).addEventListener('click',()=>closeModal($('addModal')));
 for(const id of ['closeDetail','closeDetailBottom'])$(id).addEventListener('click',()=>closeModal($('detailModal')));
 for(const id of ['addModal','detailModal','photoModal'])$(id).addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal(e.currentTarget)});
 document.addEventListener('keydown',e=>{
- const modal=topModal();if(!modal)return;
+ const modal=topModal();if(!modal){if(e.key==='Escape'&&$('navigation').classList.contains('show')){$('navigation').classList.remove('show');$('menuBtn').setAttribute('aria-expanded','false');$('menuBtn').focus()}return;}
  if(e.key==='Escape'){e.preventDefault();closeModal(modal);return}
  if(modal.id==='photoModal'&&['ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();movePhoto(e.key==='ArrowLeft'?-1:1)}
  if(e.key==='Tab'){
@@ -341,7 +326,7 @@ document.addEventListener('keydown',e=>{
   else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus()}
  }
 });
-$('addForm').addEventListener('submit',e=>{e.preventDefault();const v=new FormData(e.currentTarget);const r={id:(globalThis.crypto&&crypto.randomUUID?crypto.randomUUID():'record-'+Date.now()),artist:String(v.get('artist')).trim(),title:String(v.get('title')).trim(),date:String(v.get('date')),city:String(v.get('city')).trim(),venue:String(v.get('venue')||'').trim(),note:String(v.get('note')||'').trim(),imageUrl:imageURL(String(v.get('imageUrl')||'').trim()),art:Math.floor(Math.random()*6)};if(!r.artist||!r.title||!r.date||!r.city){toast('请填写完整的必填信息');return}data.push(r);persist();activeYear='全部';search='';$('searchInput').value='';rerender();closeModal($('addModal'));toast('✳ 已收藏这段闪闪发光的记忆');setTimeout(()=>$('memories').scrollIntoView({behavior:'smooth'}),100)});
+$('addForm').addEventListener('submit',e=>{e.preventDefault();const v=new FormData(e.currentTarget);const r={id:(globalThis.crypto&&crypto.randomUUID?crypto.randomUUID():'record-'+Date.now()),artist:String(v.get('artist')).trim(),title:String(v.get('title')).trim(),date:String(v.get('date')),city:String(v.get('city')).trim(),venue:String(v.get('venue')||'').trim(),note:String(v.get('note')||'').trim(),imageUrl:imageURL(String(v.get('imageUrl')||'').trim()),art:Math.floor(Math.random()*6)};if(!r.artist||!r.title||!r.date||!r.city){toast('请填写完整的必填信息');return}data.push(r);persist();activeYear='全部';search='';$('searchInput').value='';rerender();closeModal($('addModal'));toast('演出记录已保存',true);setTimeout(()=>$('memories').scrollIntoView({behavior:HERO_REDUCED.matches?'instant':'smooth'}),100)});
 $('deleteRecord').addEventListener('click',()=>{if(!currentDetail)return;if(!confirm('确定删除这条演出记录吗？此操作不可撤销。'))return;if(defaults.some(r=>r.id===currentDetail))deleted.push(currentDetail);data=data.filter(x=>x.id!==currentDetail);persist();rerender();closeModal($('detailModal'));currentDetail=null;toast('记录已删除')});
 $('searchInput').addEventListener('input',e=>{search=e.target.value.trim();gallery()});
 $('galleryToggle').addEventListener('click',()=>{
