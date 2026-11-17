@@ -1,36 +1,10 @@
 (() => {
   'use strict';
 
-  // Apple iTunes Search metadata verified 2026-10-20, TW storefront.
-  // Medium assignments are UI examples, not verified physical editions.
-  const artworkBase = 'https://is1-ssl.mzstatic.com/image/thumb/';
-  const examples = [
-    ['范特西', '周杰伦', 'vinyl', 535739206, 'Music124/v4/a4/f2/f0/a4f2f0d4-cc80-d1a0-7f20-a0cc842a523c/JAY.jpg'],
-    ['黑色柳丁', '陶喆', 'vinyl', 914664926, 'Music114/v4/05/7a/97/057a9723-2dbd-873b-81e0-5090879b2942/825646245352.jpg'],
-    ['新地球', '林俊杰', 'cd', 1788007687, 'Music211/v4/57/5a/1b/575a1bc9-ca86-7549-e873-b55663ba6276/4711508105925.jpg'],
-    ['七里香', '周杰伦', 'vinyl', 536114662, 'Music115/v4/29/c1/2d/29c12de6-54b4-f549-9d9f-07d8a04221ea/JAY.jpg'],
-    ['叶惠美', '周杰伦', 'cd', 535824731, 'Music115/v4/45/8a/e4/458ae484-dc8b-5683-ce04-8d2948346462/JAY.jpg'],
-    ['太平盛世', '陶喆', 'cd', 905206649, 'Music125/v4/fe/ad/e7/feade7c8-826b-0379-fbf4-e59606db8e4c/825646245406.jpg'],
-    ['因你而在', '林俊杰', 'cd', 1694849133, 'Music116/v4/86/80/48/86804834-eb90-62a1-2170-cd96f9963cac/4711099729722.jpg'],
-    ['十一月的萧邦', '周杰伦', 'vinyl', 536009641, 'Music115/v4/9e/35/ad/9e35ad1e-749e-75b6-0539-1e80cea1817b/JAY11.jpg']
-  ];
-  const records = examples.map(([title, artist, format, collectionId, artwork], index) => ({
-    id: `demo-${collectionId}`, title, artist, format, collectionId,
-    cover: `${artworkBase}${artwork}/600x600bb.jpg`,
-    originalArtworkUrl: `${artworkBase}${artwork}/100x100bb.jpg`,
-    storeUrl: `https://music.apple.com/tw/album/${collectionId}?uo=4`,
-    source: 'iTunes Store', note: '', order: index
-  }));
-  // Public Apple Music page metadata, not an iTunes Search API video field.
-  records.unshift({
-    id: 'demo-1572758574', title: 'Solar Power', artist: 'Lorde', format: 'vinyl',
-    collectionId: 1572758574,
-    cover: 'https://is1-ssl.mzstatic.com/image/thumb/Video125/v4/45/f0/2a/45f02a56-ec27-3606-d353-e64d5219ffbb/Job26f0ef4b-791a-4d75-9641-c9a4d9dea1fa-122055170-PreviewImage_preview_image_nonvideo_sdr-Time1629834901812.png/600x600bb.jpg',
-    motionUrl: 'https://mvod.itunes.apple.com/itunes-assets/HLSMusic126/v4/4b/45/ed/4b45edd0-f27d-ad6a-c982-fe535228af5a/P359494374_default.m3u8',
-    storeUrl: 'https://music.apple.com/cn/album/solar-power/1572758574',
-    source: 'Apple Music', note: ''
-  });
-  records.forEach((record, index) => { record.order = index; });
+  const records = [];
+  const verifiedMotionCovers = new Map(
+    (window.ALBUM_MOTION_DATA || []).map(record => [record.collectionId, record])
+  );
   const badgeUrl = 'https://tools.applemediaservices.com/api/badges/listen-on-apple-music/badge/zh-tw?size=250x83';
   const $ = id => document.getElementById(id);
   const create = (tag, className, text) => {
@@ -48,11 +22,25 @@
   const medium = format => format === 'vinyl' ? '黑胶' : 'CD';
   const pad = count => String(count).padStart(2, '0');
   const normalize = text => text.normalize('NFKC').toLocaleLowerCase().replace(/\s+/g, '');
+  const isSingleTitle = title => typeof title === 'string' &&
+    /(?:\s+[-–—]\s*|[\[(【]\s*)(?:single|单曲|單曲|シングル)\s*[\])】]?$/iu.test(title.normalize('NFKC').trim());
   const collator = new Intl.Collator('zh-CN', { numeric: true });
+  const spendingNumber = new Intl.NumberFormat('zh-CN');
+  const pricePattern = /^(?:(nt\$|us\$|hk\$|[¥$€£]|[a-z]{3})\s*)?(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{1,2}))?\s*([a-z]{3}|元|人民币|新台币|港币|美元|日元|欧元|英镑)?$/i;
+  const priceCurrencies = new Map([
+    ['nt$', 'TWD'], ['新台币', 'TWD'], ['twd', 'TWD'],
+    ['us$', 'USD'], ['美元', 'USD'], ['usd', 'USD'],
+    ['hk$', 'HKD'], ['港币', 'HKD'], ['hkd', 'HKD'],
+    ['元', 'CNY'], ['人民币', 'CNY'], ['rmb', 'CNY'], ['cny', 'CNY'],
+    ['日元', 'JPY'], ['jpy', 'JPY'],
+    ['€', 'EUR'], ['欧元', 'EUR'], ['eur', 'EUR'],
+    ['£', 'GBP'], ['英镑', 'GBP'], ['gbp', 'GBP']
+  ]);
   let activeFormat = 'all';
   let dialogOpener = null;
   let scrollY = 0;
   let toastTimer;
+  let featuredRecord;
   let featuredMotion = null;
   let detailMotion = null;
   const cardMotionPlayers = [];
@@ -84,7 +72,7 @@
   function renderCover(host, record, eager = false) {
     host.replaceChildren();
     const placeholder = create('span', 'cover-placeholder');
-    placeholder.append(create('span', '', '◎'), create('strong', '', record.title), create('small', '', 'LIVELOG / NO COVER'));
+    placeholder.append(create('span', '', '◎'), create('strong', '', record.title), create('small', '', '暂无封面'));
     placeholder.setAttribute('role', 'img');
     placeholder.setAttribute('aria-label', `${record.title}，暂无可用封面`);
     host.append(placeholder);
@@ -97,7 +85,15 @@
     image.decoding = 'async';
     if (eager) image.fetchPriority = 'high';
     image.addEventListener('load', () => { placeholder.hidden = true; });
-    image.addEventListener('error', () => { image.remove(); placeholder.hidden = false; }, { once: true });
+    const original = imageUrl(record.originalArtworkUrl);
+    image.addEventListener('error', () => {
+      if (original && image.src !== original) {
+        image.src = original;
+        return;
+      }
+      image.remove();
+      placeholder.hidden = false;
+    });
     image.src = src;
     host.append(image);
   }
@@ -117,12 +113,78 @@
     return link;
   }
 
+  function renderFeaturedAlbum() {
+    const record = records[0];
+    if (!record || record === featuredRecord) return;
+    featuredRecord = record;
+    featuredMotion?.destroy();
+    featuredMotion = null;
+    const button = $('featuredAlbum');
+    button.hidden = false;
+    button.setAttribute('aria-label', `查看《${record.title}》专辑详情`);
+    button.onclick = () => showDetail(record, button);
+    $('featuredPlaceholder').hidden = true;
+    renderCover($('featuredCover'), record, true);
+    $('featuredCaption').hidden = false;
+    $('featuredTitle').textContent = record.title;
+    $('featuredArtist').textContent = record.artist ? `/ ${record.artist}` : '';
+    $('featuredArtist').hidden = !record.artist;
+    $('featuredStore').hidden = !record.storeUrl;
+    if (record.storeUrl) storeBadge(record, $('featuredStore'));
+    $('featuredMotionBar').hidden = !record.motionUrl;
+    if (record.motionUrl) {
+      featuredMotion = motionControl($('featuredCover'), record, $('featuredMotionToggle'), $('featuredMotionStatus'));
+    }
+  }
+
+  function refreshShelf() {
+    renderFeaturedAlbum();
+    updateStats();
+    renderRecords();
+    suspendBackgroundMotion(Boolean(document.querySelector('dialog[open]')));
+  }
+
   function updateStats() {
     $('albumCount').textContent = pad(records.length);
     $('vinylCount').textContent = pad(records.filter(record => record.format === 'vinyl').length);
     $('cdCount').textContent = pad(records.filter(record => record.format === 'cd').length);
-    $('artistCount').textContent = pad(new Set(records.map(record => normalize(record.artist))).size);
+    $('artistCount').textContent = pad(new Set(records.map(record => normalize(record.artist)).filter(Boolean)).size);
     $('allFilterCount').textContent = records.length;
+    renderTotalSpending();
+  }
+
+  function renderTotalSpending() {
+    const totals = new Map();
+    for (const { price } of records) {
+      if (typeof price !== 'string') continue;
+      const match = price.normalize('NFKC').trim().toLowerCase().match(pricePattern);
+      if (!match) continue;
+      const [, symbol = '', amount, fraction = '', unit = ''] = match;
+      const prefixCurrency = priceCurrencies.get(symbol) || symbol.toUpperCase();
+      const suffixCurrency = priceCurrencies.get(unit) || unit.toUpperCase();
+      if (prefixCurrency && suffixCurrency && prefixCurrency !== suffixCurrency &&
+          symbol !== '¥' && symbol !== '$') continue;
+      if (!suffixCurrency && !prefixCurrency) continue;
+      const currency = suffixCurrency || prefixCurrency;
+      const cents = BigInt(amount.replaceAll(',', '') + fraction.padEnd(2, '0'));
+      totals.set(currency, (totals.get(currency) ?? 0n) + cents);
+    }
+
+    const spending = $('totalSpending');
+    if (!totals.size) {
+      const row = create('p');
+      row.append(create('strong', '', '0'));
+      spending.replaceChildren(row);
+      return;
+    }
+    spending.replaceChildren(...Array.from(totals, ([currency, cents]) => {
+      const whole = spendingNumber.format(cents / 100n);
+      const fraction = cents % 100n;
+      const amount = fraction === 0n ? whole : `${whole}.${String(fraction).padStart(2, '0')}`;
+      const row = create('p');
+      row.append(create('strong', '', amount), create('span', '', currency));
+      return row;
+    }));
   }
 
   function renderRecords() {
@@ -137,30 +199,22 @@
       const card = create('article', 'record-card');
       const button = create('button', 'record-open');
       button.type = 'button';
-      button.setAttribute('aria-label', `查看${record.artist}《${record.title}》，${medium(record.format)}演示`);
+      button.setAttribute('aria-label', `查看${record.artist}《${record.title}》，${medium(record.format)}`);
       const cover = create('span', 'cover-frame');
       renderCover(cover, record);
-      const index = create('span', 'card-index', `NO. ${pad(record.order + 1)}`);
-      index.setAttribute('aria-hidden', 'true');
-      cover.append(index);
       const format = create('span', 'card-medium');
       const icon = create('span', `format-dot ${record.format}-dot`);
       icon.setAttribute('aria-hidden', 'true');
-      format.append(icon, document.createTextNode(`${medium(record.format)} · 演示`), create('span', '', record.format === 'vinyl' ? 'VINYL' : 'COMPACT DISC'));
+      format.append(icon, document.createTextNode(medium(record.format)));
       const title = create('h3', '', record.title);
       title.title = record.title;
       const artist = create('span', 'card-artist');
       const arrow = create('span', 'card-arrow', '↗');
       arrow.setAttribute('aria-hidden', 'true');
-      artist.append(create('span', 'artist-name', record.artist), arrow);
+      artist.append(create('span', 'artist-name', record.artist || '未记录'), arrow);
       button.append(cover, format, title, artist);
       button.addEventListener('click', () => showDetail(record, button));
-      const source = create('div', 'card-source');
-      const caption = create('span', 'source-caption');
-      caption.append(create('span', '', record.source === 'Apple Music' ? '专辑资料 / Apple Music' : record.source ? '专辑资料 / iTunes' : '本次添加'), create('span', '', 'DEMO COLLECTION'));
-      source.append(caption);
-      if (record.storeUrl) source.append(storeBadge(record));
-      card.append(button, source);
+      card.append(button);
       if (record.motionUrl) {
         const toggle = create('button', 'motion-toggle card-motion-toggle');
         toggle.type = 'button';
@@ -173,7 +227,12 @@
     });
     $('recordGrid').replaceChildren(fragment);
     $('emptyState').hidden = visible.length > 0;
-    $('resultCount').textContent = visible.length === records.length ? `共 ${records.length} 张示例专辑` : `显示 ${visible.length} / ${records.length} 张示例专辑`;
+    const hasAlbums = records.length > 0;
+    $('emptyStateTitle').textContent = hasAlbums ? '没有匹配的唱片' : '暂无唱片';
+    $('emptyStateHelp').textContent = hasAlbums ? '试试其他关键词或清空筛选。' : '添加你的第一张唱片。';
+    $('clearFilters').hidden = !hasAlbums;
+    $('emptyAddAlbum').hidden = hasAlbums;
+    $('resultCount').textContent = visible.length === records.length ? `共 ${records.length} 张专辑` : `显示 ${visible.length} / ${records.length} 张专辑`;
   }
 
   // Native modality makes the background inert; wrap Tab inside the dialog too.
@@ -193,19 +252,27 @@
     detailMotion?.destroy();
     detailMotion = null;
     $('detailTitle').textContent = record.title;
-    $('detailArtist').textContent = record.artist;
-    $('detailFormat').textContent = `${medium(record.format)} · 演示介质`;
+    $('detailArtist').textContent = record.artist || '未记录';
+    $('detailFormat').textContent = medium(record.format);
+    $('detailVersion').textContent = record.version || '未记录';
+    $('detailPrice').textContent = record.price || '未记录';
+    $('detailPurchaseChannel').textContent = record.purchaseChannel || '未记录';
     $('detailNote').textContent = record.note || '未记录';
     renderCover($('detailCover'), record, true);
     $('detailSource').replaceChildren();
-    if (record.storeUrl) $('detailSource').append(storeBadge(record), create('span', '', `专辑资料与封面来源\n${record.source} / Apple`));
-    else $('detailSource').append(create('span', '', '本次添加的演示记录 · 刷新后恢复'));
+    if (record.storeUrl) $('detailSource').append(storeBadge(record), create('span', '', `来源：${record.source} / Apple`));
     openDialog($('detailDialog'), opener);
     $('detailMotionBar').hidden = !record.motionUrl;
     if (record.motionUrl) detailMotion = motionControl($('detailCover'), record, $('detailMotionToggle'), $('detailMotionStatus'));
   }
 
   document.querySelectorAll('dialog').forEach(dialog => {
+    const close = () => {
+      if (dialog.id !== 'addDialog' || !savingAlbum) dialog.close();
+    };
+    dialog.addEventListener('cancel', event => {
+      if (dialog.id === 'addDialog' && savingAlbum) event.preventDefault();
+    });
     dialog.addEventListener('keydown', event => {
       if (event.key !== 'Tab') return;
       const controls = [...dialog.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex="0"]')].filter(element => element.getClientRects().length);
@@ -219,13 +286,14 @@
         first?.focus();
       }
     });
-    dialog.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', () => dialog.close()));
+    dialog.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', close));
     dialog.addEventListener('click', event => {
       const rect = dialog.getBoundingClientRect();
-      if (event.target === dialog && (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom)) dialog.close();
+      if (event.target === dialog && (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom)) close();
     });
     dialog.addEventListener('close', () => {
       if (dialog === $('detailDialog')) { detailMotion?.destroy(); detailMotion = null; }
+      if (dialog === $('addDialog')) resetCoverSearch();
       document.body.style.position = '';
       document.body.style.top = '';
       document.body.style.width = '';
@@ -237,42 +305,336 @@
   });
 
   document.querySelectorAll('[data-open-add]').forEach(button => button.addEventListener('click', () => {
-    $('addForm').reset();
+    form.reset();
+    addRecordId = '';
+    resetCoverSearch();
     $('formError').textContent = '';
-    $('addForm').querySelectorAll('input').forEach(input => input.setCustomValidity(''));
+    form.querySelectorAll('input').forEach(input => input.setCustomValidity(''));
     openDialog($('addDialog'), button);
   }));
 
   const form = $('addForm');
-  ['title', 'artist'].forEach(name => {
-    const input = form.elements.namedItem(name);
-    input.addEventListener('input', () => input.setCustomValidity(input.value && !input.value.trim() ? '请填写有效内容，不能仅包含空格。' : ''));
-  });
+  const titleInput = form.elements.namedItem('title');
+  const artistInput = form.elements.namedItem('artist');
   const coverInput = form.elements.namedItem('cover');
+  const coverSearchButton = $('coverSearchButton');
+  const coverSearchStatus = $('coverSearchStatus');
+  const coverResults = $('coverSearchResults');
+  const addSubmitButton = form.querySelector('button[type="submit"]');
+  let coverSearchRequest;
+  let selectedCover = null;
+  let addRecordId = '';
+  let savingAlbum = false;
+  const coverPreviewPlayers = [];
+
+  async function requestAlbums(url, signal) {
+    if (window.location.protocol !== 'file:') {
+      const response = await fetch(url, { signal });
+      if (!response.ok) throw new Error('iTunes Search failed');
+      return response.json();
+    }
+
+    // iTunes Search does not allow the opaque Origin of a file:// page via CORS.
+    // Run its documented JSONP callback in an iframe without access to this page.
+    return new Promise((resolve, reject) => {
+      const frame = create('iframe');
+      frame.hidden = true;
+      frame.setAttribute('sandbox', 'allow-scripts');
+      function finish(payload) {
+        window.removeEventListener('message', receive);
+        signal.removeEventListener('abort', cancel);
+        frame.remove();
+        if (payload) resolve(payload);
+        else reject(new Error('iTunes Search failed'));
+      }
+      function receive(event) {
+        if (event.origin === 'null' && event.source === frame.contentWindow) finish(event.data);
+      }
+      function cancel() { finish(null); }
+      url.searchParams.set('callback', 'receiveAlbumResults');
+      const scriptUrl = url.href.replaceAll('&', '&amp;');
+      frame.srcdoc = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' https://itunes.apple.com">
+        <script>function receiveAlbumResults(data) { parent.postMessage(data, '*'); }</script>
+        <script src="${scriptUrl}" onerror="parent.postMessage(null, '*')"></script>`;
+      window.addEventListener('message', receive);
+      signal.addEventListener('abort', cancel, { once: true });
+      document.body.append(frame);
+    });
+  }
+
+  async function requestMotionCovers(candidates, signal) {
+    const localFile = window.location.protocol === 'file:';
+    if (!localFile && !['127.0.0.1', 'localhost'].includes(window.location.hostname)) return [];
+    const origin = localFile ? 'http://127.0.0.1:8765' : window.location.origin;
+    const url = new URL('/api/album-motion', origin);
+    candidates.filter(candidate => !candidate.motionUrl && candidate.storeUrl).slice(0, 12)
+      .forEach(candidate => url.searchParams.append('url', candidate.storeUrl));
+    if (!url.search) return [];
+
+    try {
+      const response = await fetch(url, { signal });
+      if (!response.ok) return [];
+      const albums = await response.json();
+      return Array.isArray(albums) ? albums : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function usesLocalAlbumService() {
+    return window.location.protocol === 'http:' && ['127.0.0.1', 'localhost'].includes(window.location.hostname);
+  }
+
+  function addSavedAlbum(album) {
+    if (!album || typeof album.id !== 'string' || typeof album.title !== 'string' ||
+        typeof album.artist !== 'string' || !['vinyl', 'cd'].includes(album.format) ||
+        records.some(record => record.id === album.id)) return;
+    const assetUrl = value => imageUrl(typeof value === 'string' && value.startsWith('/public/albums/')
+      ? new URL(value, window.location.origin).href
+      : value);
+    records.push({
+      ...album,
+      cover: assetUrl(album.cover),
+      motionUrl: assetUrl(album.motionUrl),
+      storeUrl: imageUrl(album.storeUrl),
+      order: records.length
+    });
+  }
+
+  async function loadSavedAlbums() {
+    if (!usesLocalAlbumService()) return;
+    try {
+      const response = await fetch('/api/albums');
+      if (!response.ok) return;
+      const albums = await response.json();
+      if (!Array.isArray(albums)) return;
+      albums.forEach(addSavedAlbum);
+      refreshShelf();
+    } catch { /* A static preview can still show the empty shelf. */ }
+  }
+
+  async function saveAlbum(record, candidate) {
+    const request = new AbortController();
+    const timeout = setTimeout(() => request.abort(), 60000);
+    try {
+      const response = await fetch('/api/albums', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...record,
+          selectedCover: candidate ? {
+            collectionId: candidate.collectionId,
+            cover: candidate.cover,
+            originalArtworkUrl: candidate.originalArtworkUrl,
+            motionUrl: candidate.motionUrl
+          } : null
+        }),
+        signal: request.signal
+      });
+      if (!response.headers.get('Content-Type')?.startsWith('application/json')) {
+        throw new Error('请重启 LiveLog 本机服务后重试。');
+      }
+      const saved = await response.json();
+      if (!response.ok) throw new Error(saved.error || '唱片保存失败，请重试。');
+      if (saved?.id !== `record-${record.id}`) throw new Error('本机服务未返回唱片记录，请重试。');
+      return saved;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  function resetCoverSearch() {
+    const previousRequest = coverSearchRequest;
+    coverSearchRequest = null;
+    previousRequest?.abort();
+    if (selectedCover) coverInput.value = '';
+    selectedCover = null;
+    clearCoverResults();
+    coverResults.hidden = true;
+    coverSearchStatus.textContent = '';
+    coverSearchButton.disabled = !titleInput.value.trim();
+  }
+
+  function clearCoverResults() {
+    coverPreviewPlayers.forEach(player => player.destroy());
+    coverPreviewPlayers.length = 0;
+    coverResults.replaceChildren();
+  }
+
+  function renderCoverResults(candidates) {
+    clearCoverResults();
+    coverResults.hidden = !candidates.length;
+    coverSearchStatus.textContent = candidates.length ? '请选择封面。' : '没有找到专辑封面，可以修改关键词或填写图片地址。';
+    candidates.forEach(candidate => {
+      const button = create('button', 'cover-choice');
+      button.type = 'button';
+      button.setAttribute('aria-pressed', String(selectedCover?.collectionId === candidate.collectionId));
+      const thumbnail = create('span', 'cover-frame');
+      renderCover(thumbnail, candidate, true);
+      thumbnail.setAttribute('aria-hidden', 'true');
+      button.append(thumbnail, create('span', 'cover-choice-title', candidate.title), create('span', 'cover-choice-artist', candidate.artist));
+      if (candidate.motionUrl) {
+        const preview = window.mountAlbumMotionCover?.({ host: thumbnail, src: candidate.motionUrl });
+        if (preview) coverPreviewPlayers.push(preview);
+      }
+      button.addEventListener('click', () => {
+        selectedCover = candidate;
+        coverInput.value = candidate.cover;
+        coverInput.setCustomValidity('');
+        coverResults.querySelectorAll('button').forEach(option => option.setAttribute('aria-pressed', String(option === button)));
+        coverSearchStatus.textContent = `已选用《${candidate.title}》的封面。`;
+      });
+      coverResults.append(button);
+    });
+  }
+
+  async function searchCovers() {
+    const title = titleInput.value.trim();
+    if (!title || savingAlbum || coverSearchRequest || !$('addDialog').open) return;
+    const request = new AbortController();
+    coverSearchRequest = request;
+    coverSearchStatus.textContent = '正在搜索封面…';
+    const url = new URL('https://itunes.apple.com/search');
+    const artist = artistInput.value.trim();
+    const term = [title, artist].filter(Boolean).join(' ');
+    const requestedTitle = normalize(title);
+    const requestedArtist = normalize(artist);
+    const verifiedMatches = [...verifiedMotionCovers.values()].filter(album =>
+      !isSingleTitle(album.title) && normalize(album.title) === requestedTitle &&
+      (!requestedArtist || normalize(album.artist) === requestedArtist)
+    );
+    url.search = new URLSearchParams({ term, media: 'music', entity: 'album', country: 'tw', limit: '24' });
+    const timeout = setTimeout(() => request.abort(), 18000);
+    try {
+      const { results } = await requestAlbums(url, request.signal);
+      if (coverSearchRequest !== request || !$('addDialog').open) return;
+      const candidates = [];
+      for (const result of results) {
+        if (result?.wrapperType !== 'collection' || typeof result.collectionName !== 'string') continue;
+        if (String(result.collectionType).toLowerCase() === 'single' || isSingleTitle(result.collectionName) ||
+            isSingleTitle(result.collectionCensoredName)) continue;
+        const verified = verifiedMotionCovers.get(result.collectionId);
+        const originalArtworkUrl = imageUrl(result.artworkUrl100);
+        if (!verified && !originalArtworkUrl) continue;
+        candidates.push({
+          collectionId: result.collectionId,
+          title: result.collectionName,
+          artist: typeof result.artistName === 'string' ? result.artistName : '',
+          originalArtworkUrl,
+          cover: verified?.cover || originalArtworkUrl.replace(/\/100x100bb\.jpg$/, '/600x600bb.jpg'),
+          motionUrl: verified?.motionUrl,
+          storeUrl: verified?.storeUrl || imageUrl(result.collectionViewUrl),
+          source: verified?.source || 'iTunes Store'
+        });
+      }
+      const relevant = candidates.filter(candidate =>
+        normalize(candidate.title).includes(requestedTitle) &&
+        (!requestedArtist || normalize(candidate.artist).includes(requestedArtist))
+      );
+      const hasMatch = relevant.length > 0 || verifiedMatches.length > 0;
+      const rankedCandidates = hasMatch ? relevant : candidates;
+      const resolved = await requestMotionCovers(hasMatch ? relevant : candidates.slice(0, 3), request.signal);
+      if (coverSearchRequest !== request || !$('addDialog').open) return;
+      const resolvedById = new Map(resolved.map(album => [album.collectionId, album]));
+      for (const candidate of rankedCandidates) {
+        const album = resolvedById.get(candidate.collectionId);
+        const motionUrl = imageUrl(album?.motionUrl);
+        if (!motionUrl) continue;
+        candidate.motionUrl = motionUrl;
+        candidate.cover = imageUrl(album.cover) || candidate.cover;
+        candidate.storeUrl = imageUrl(album.storeUrl) || candidate.storeUrl;
+        candidate.source = 'Apple Music';
+      }
+      // A regional search can return the same title under a different album ID.
+      // Keep the verified edition as its own option with its own Apple Music link.
+      for (const verified of verifiedMatches) {
+        if (!rankedCandidates.some(candidate => candidate.motionUrl &&
+              normalize(candidate.title) === normalize(verified.title) &&
+              normalize(candidate.artist) === normalize(verified.artist))) {
+          rankedCandidates.push(verified);
+        }
+      }
+      rankedCandidates.sort((first, second) => Number(Boolean(second.motionUrl)) - Number(Boolean(first.motionUrl)));
+      renderCoverResults(rankedCandidates.slice(0, 3));
+    } catch {
+      if (coverSearchRequest === request && $('addDialog').open) {
+        if (verifiedMatches.length) renderCoverResults([verifiedMatches[0]]);
+        else coverSearchStatus.textContent = '封面搜索失败，可以重试或填写图片地址。';
+      }
+    } finally {
+      clearTimeout(timeout);
+      if (coverSearchRequest === request) coverSearchRequest = null;
+    }
+  }
+
+  function clearCoverSearchForInput() {
+    resetCoverSearch();
+    const title = titleInput.value;
+    titleInput.setCustomValidity(title && !title.trim() ? '请填写专辑名称。' : '');
+  }
+  [titleInput, artistInput].forEach(input => {
+    input.addEventListener('input', clearCoverSearchForInput);
+  });
+  coverSearchButton.addEventListener('click', searchCovers);
   coverInput.addEventListener('input', () => {
+    if (selectedCover) {
+      selectedCover = null;
+      coverResults.querySelector('[aria-pressed="true"]')?.setAttribute('aria-pressed', 'false');
+      coverSearchStatus.textContent = '请选择封面。';
+    }
     coverInput.setCustomValidity(coverInput.value && !imageUrl(coverInput.value.trim()) ? '请填写 HTTP 或 HTTPS 图片地址。' : '');
   });
-  form.addEventListener('submit', event => {
+  form.addEventListener('submit', async event => {
     event.preventDefault();
+    if (savingAlbum) return;
     const values = new FormData(form);
     const title = String(values.get('title')).trim();
-    const artist = String(values.get('artist')).trim();
+    const matchedCover = selectedCover?.cover === coverInput.value.trim() ? selectedCover : null;
+    const artist = String(values.get('artist')).trim() || matchedCover?.artist || '';
     const format = String(values.get('format'));
     const rawCover = String(values.get('cover')).trim();
     const cover = imageUrl(rawCover);
-    if (!title || !artist || !['vinyl', 'cd'].includes(format) || (rawCover && !cover)) {
-      $('formError').textContent = '请填写专辑名、音乐人及介质；封面只支持 HTTP / HTTPS 地址。';
+    if (!title || !['vinyl', 'cd'].includes(format) || (rawCover && !cover)) {
+      $('formError').textContent = '请填写专辑名称并选择介质。封面仅支持 HTTP / HTTPS 地址。';
       return;
     }
-    records.push({ id: `session-${records.length + 1}`, title, artist, format, cover, note: String(values.get('note')).trim(), source: '', storeUrl: '', order: records.length });
+    $('formError').textContent = '';
+    if (!usesLocalAlbumService()) {
+      $('formError').textContent = '请打开本机唱片架保存唱片（http://127.0.0.1:8765/albums.html）。';
+      return;
+    }
+    addRecordId ||= crypto.randomUUID();
+    const record = {
+      id: addRecordId, title, artist, format, cover,
+      version: String(values.get('version')).trim(),
+      price: String(values.get('price')).trim(),
+      purchaseChannel: String(values.get('purchaseChannel')).trim(),
+      note: String(values.get('note')).trim(),
+      source: matchedCover?.source || '',
+      storeUrl: matchedCover?.storeUrl || ''
+    };
+    savingAlbum = true;
+    addSubmitButton.disabled = true;
+    $('addSubmitLabel').textContent = '正在保存唱片…';
+    try {
+      addSavedAlbum(await saveAlbum(record, matchedCover));
+    } catch (error) {
+      $('formError').textContent = error.name === 'TypeError' || error.name === 'AbortError'
+        ? '无法连接本机服务或保存超时，请重试。'
+        : error.message;
+      return;
+    } finally {
+      savingAlbum = false;
+      addSubmitButton.disabled = false;
+      $('addSubmitLabel').textContent = '添加唱片';
+    }
     activeFormat = 'all';
     $('albumSearch').value = '';
     $('albumSort').value = 'default';
     syncFilters();
-    updateStats();
-    renderRecords();
+    refreshShelf();
     $('addDialog').close();
-    $('toast').textContent = '已添加演示记录，刷新后恢复。';
+    $('toast').textContent = '唱片已保存到本机。';
     $('toast').classList.add('show');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => $('toast').classList.remove('show'), 4500);
@@ -319,7 +681,7 @@
     const iconPath = theme === 'light' ? 'public/livelog-icon-light.svg' : 'public/livelog-icon.svg';
     document.querySelectorAll('[data-brand-icon]').forEach(icon => icon.setAttribute(icon.tagName === 'LINK' ? 'href' : 'src', iconPath));
     document.querySelectorAll('[data-set-theme]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.setTheme === theme)));
-    $('browserThemeColor').content = theme === 'light' ? '#f8f5ef' : '#0b1322';
+    $('browserThemeColor').content = theme === 'light' ? '#f5f5f3' : '#050505';
   }
   document.querySelectorAll('[data-set-theme]').forEach(button => button.addEventListener('click', () => {
     syncTheme(button.dataset.setTheme);
@@ -334,19 +696,17 @@
     if (event.key === themeKey) syncTheme(event.newValue === 'light' || event.newValue === 'dark' ? event.newValue : (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'));
   });
   syncTheme(document.documentElement.dataset.theme);
-  renderCover($('featuredCover'), records[0], true);
-  storeBadge(records[0], $('featuredStore'));
-  $('featuredAlbum').addEventListener('click', () => showDetail(records[0], $('featuredAlbum')));
-  featuredMotion = motionControl($('featuredCover'), records[0], $('featuredMotionToggle'), $('featuredMotionStatus'));
   window.addEventListener('pagehide', () => {
     featuredMotion?.setSuspended(true);
     cardMotionPlayers.forEach(player => player.setSuspended(true));
     detailMotion?.setSuspended(true);
+    coverPreviewPlayers.forEach(player => player.setSuspended(true));
   });
   window.addEventListener('pageshow', () => {
     suspendBackgroundMotion(Boolean(document.querySelector('dialog[open]')));
     detailMotion?.setSuspended(false);
+    coverPreviewPlayers.forEach(player => player.setSuspended(false));
   });
-  updateStats();
-  renderRecords();
+  refreshShelf();
+  loadSavedAlbums();
 })();
