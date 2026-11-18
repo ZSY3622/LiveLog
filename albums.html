@@ -21,6 +21,8 @@
   <script src="public/vendor/hls/1.7.3/hls.min.js" defer></script>
   <script src="album-motion.js" defer></script>
   <script src="public/album-motion-data.js" defer></script>
+  <script src="public/album-data.js" defer></script>
+  <script src="album-archive.js" defer></script>
   <script src="albums.js" defer></script>
 <script src="page-transition.js"></script>
 </head>
@@ -68,7 +70,7 @@
       <div class="stat"><span class="stat-label">收藏音乐人</span><p><strong id="artistCount">00</strong><span>位音乐人</span></p></div>
       <div class="stat stat-total">
         <span class="stat-label">总花费</span>
-        <div id="totalSpending" aria-live="polite"><p><strong>0</strong></p></div>
+        <div id="totalSpending" aria-live="polite"><p><span>暂无可统计金额</span></p></div>
       </div>
     </section>
 
@@ -105,13 +107,16 @@
       <div class="detail-body">
         <h2 id="detailTitle"></h2>
         <p id="detailArtist" class="detail-artist"></p>
-        <span class="medium-badge" id="detailFormat"></span>
+        <div class="detail-actions">
+          <span class="medium-badge" id="detailFormat"></span>
+          <button type="button" class="button" id="editAlbum" aria-haspopup="dialog">编辑唱片</button>
+        </div>
         <dl class="detail-facts">
           <div><dt>实体版本</dt><dd id="detailVersion">未记录</dd></div>
           <div><dt>购入价格</dt><dd id="detailPrice">未记录</dd></div>
           <div><dt>购买渠道</dt><dd id="detailPurchaseChannel">未记录</dd></div>
-          <div><dt>购入日期</dt><dd>未记录</dd></div>
-          <div><dt>品相</dt><dd>未记录</dd></div>
+          <div><dt>购入日期</dt><dd id="detailPurchaseDate">未记录</dd></div>
+          <div><dt>品相</dt><dd id="detailCondition">未记录</dd></div>
         </dl>
         <div class="detail-note"><h3>收藏笔记</h3><p id="detailNote">未记录</p></div>
         <div class="detail-source" id="detailSource"></div>
@@ -121,9 +126,9 @@
 
   <dialog class="modal add-dialog" id="addDialog" aria-labelledby="addTitle">
     <div class="add-body">
-      <button type="button" class="close-button icon-button" data-close aria-label="关闭添加唱片">×</button>
+      <button type="button" class="close-button icon-button" data-close aria-label="关闭唱片表单">×</button>
       <h2 id="addTitle">添加唱片</h2>
-      <p class="form-intro" id="formIntro">专辑信息和搜索选中的封面会保存到本机。</p>
+      <p class="form-intro" id="formIntro">唱片保存到项目的 public/albums。首次保存时请授权项目的 public 文件夹。</p>
       <form id="addForm" aria-describedby="formIntro">
         <div class="form-grid">
           <label class="field"><span>专辑名称 <span class="required">*</span></span><input name="title" required maxlength="120" placeholder="如：黑色柳丁"></label>
@@ -138,10 +143,13 @@
             <div class="cover-search-results" id="coverSearchResults" role="group" aria-label="封面搜索结果" hidden></div>
             <input id="albumCoverUrl" name="cover" type="url" aria-label="封面图片地址" placeholder="也可以粘贴图片地址" aria-describedby="coverHelp">
             <small id="coverHelp">支持 HTTP / HTTPS 图片链接，留空将显示占位图。</small>
+            <button type="button" class="quiet-button" id="removeAlbumCover" hidden>移除当前封面</button>
           </div>
           <label class="field"><span>实体版本 <span class="optional">可选</span></span><input name="version" maxlength="120" placeholder="如：周年纪念版"></label>
-          <label class="field"><span>购入价格 <span class="optional">可选</span></span><input name="price" maxlength="40" placeholder="如：NT$ 780"></label>
+          <label class="field"><span>购入价格 <span class="optional">可选</span></span><input name="price" maxlength="40" placeholder="如：112"></label>
           <label class="field field-wide"><span>购买渠道 <span class="optional">可选</span></span><input name="purchaseChannel" maxlength="200" placeholder="如：店铺、平台或链接"></label>
+          <label class="field"><span>购入日期 <span class="optional">可选</span></span><input name="purchaseDate" type="date"></label>
+          <label class="field"><span>品相 <span class="optional">可选</span></span><input name="condition" maxlength="80" placeholder="如：全新、二手近新"></label>
           <label class="field field-wide"><span>收藏笔记 <span class="optional">可选</span></span><textarea name="note" rows="3" maxlength="1000" placeholder="记下你与这张专辑的故事…"></textarea></label>
         </div>
         <p class="form-error" id="formError" role="alert"></p>

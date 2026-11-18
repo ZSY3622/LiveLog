@@ -114,5 +114,7 @@ html.page-revealing::after { animation: page-curtain-out .42s cubic-bezier(.65,0
 }
 .cover-choice-artist {color:var(--muted)}
 .detail-facts dd {overflow-wrap:anywhere}
+.detail-actions {display:flex;align-items:center;flex-wrap:wrap;gap:12px}
+#removeAlbumCover {justify-self:start}
 .detail-source:empty {display:none}
 .empty-sleeve {pointer-events:none}

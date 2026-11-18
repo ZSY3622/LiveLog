@@ -23,7 +23,7 @@ class Element extends EventTarget {
   getBoundingClientRect() { return { width: 300, height: 300, top: 20, bottom: 320 }; }
 }
 
-function setup(t, { safari = false, reduced = false, src = 'https://example.com/cover.m3u8' } = {}) {
+function setup(t, { safari = false, reduced = false, src = 'https://example.com/cover.m3u8', localVideo = false } = {}) {
   const document = new Element();
   document.hidden = false;
   const media = new Element();
@@ -69,7 +69,7 @@ function setup(t, { safari = false, reduced = false, src = 'https://example.com/
   });
   vm.runInContext(fs.readFileSync(path.join(__dirname, '../album-motion.js'), 'utf8'), context);
   const host = new Element();
-  const player = window.mountAlbumMotionCover({ host, src, onState: value => states.push(value.state) });
+  const player = window.mountAlbumMotionCover({ host, src, localVideo, onState: value => states.push(value.state) });
   t.after(() => player.destroy());
   return { player, host, video: host.children[0], observer, instances, document, media, timers, states, Hls };
 }
@@ -90,6 +90,19 @@ test('Safari plays the original playlist natively, muted and inline', t => {
   assert.equal(host.dataset.motionEngine, 'native');
   assert.equal(video.src, 'https://example.com/cover.m3u8');
   assert.equal(video.muted && video.defaultMuted && video.loop && video.playsInline, true);
+});
+
+test('an archived MP4 plays directly from disk and releases the file offscreen', t => {
+  const src = 'file:///LiveLog/public/albums/first%20love/motion.mp4';
+  const { observer, instances, host, video } = setup(t, { src, localVideo: true });
+  assert.equal(video.src, '');
+  observer.show(true);
+  assert.equal(host.dataset.motionEngine, 'file');
+  assert.equal(instances.length, 0);
+  assert.equal(video.src, src);
+  assert.equal(video.playCalls, 1);
+  observer.show(false);
+  assert.equal(video.src, '');
 });
 
 test('reduced motion prevents automatic requests but permits explicit playback', t => {

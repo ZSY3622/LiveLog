@@ -2,7 +2,7 @@
   'use strict';
 
   // The caller owns the static cover; this adapter only overlays video while playing.
-  window.mountAlbumMotionCover = ({ host, src, autoplay = true, onState = () => {} }) => {
+  window.mountAlbumMotionCover = ({ host, src, localVideo = false, autoplay = true, onState = () => {} }) => {
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     const events = new AbortController();
     const video = document.createElement('video');
@@ -91,16 +91,25 @@
       let url;
       try {
         url = new URL(src);
-        if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) throw new Error('Invalid source');
+        const localMp4 = window.location.protocol === 'file:' && url.protocol === 'file:' && url.pathname.endsWith('/motion.mp4');
+        if (url.username || url.password || (localVideo ? !localMp4 : !['http:', 'https:'].includes(url.protocol))) {
+          throw new Error('Invalid source');
+        }
       } catch { fail(); return; }
+      initialized = true;
+      notify('loading');
+      watchLoading();
+      if (localVideo) {
+        host.dataset.motionEngine = 'file';
+        video.src = url.href;
+        requestPlay();
+        return;
+      }
       const Hls = window.Hls;
       const supported = typeof Hls?.isSupported === 'function' && Hls.isSupported();
       const native = video.canPlayType('application/vnd.apple.mpegurl');
       // Safari has a reliable native HLS path; Chrome uses MSE even if canPlayType says "maybe".
       const useNative = native && (/Apple/.test(window.navigator.vendor || '') || !supported);
-      initialized = true;
-      notify('loading');
-      watchLoading();
       if (useNative) {
         host.dataset.motionEngine = 'native';
         video.src = url.href;

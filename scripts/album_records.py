@@ -16,7 +16,7 @@ RECORD_ID = re.compile(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}")
 INVALID_FOLDER_CHARACTERS = re.compile(r'[<>:"/\\|?*\x00-\x1f\x7f]')
 WINDOWS_DEVICE_NAME = re.compile(r"(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])", re.I)
 ASSET_FILES = {
-    "cover": ("cover.jpg", "cover.png", "cover.webp"),
+    "cover": ("cover.jpg", "cover.jpeg", "cover.png", "cover.webp"),
     "motionUrl": ("motion.m3u8",),
 }
 RECORDS_LOCK = Lock()
@@ -70,11 +70,13 @@ def stored_albums():
 
 def local_asset_name(folder, record, field):
     directory, _, filename = unquote(record[field]).rpartition("/")
-    if filename in ASSET_FILES[field] and directory in (
-        "", f"/public/albums/{folder.name}", f"/public/albums/{record['id']}",
+    directory = normalize("NFC", directory.removeprefix("/"))
+    if filename.lower() not in ASSET_FILES[field] or directory not in (
+        "", f"public/albums/{normalize('NFC', folder.name)}", f"public/albums/{record['id']}",
     ):
-        return filename
-    return ""
+        return ""
+    matches = sorted(entry.name for entry in folder.iterdir() if entry.name.lower() == filename.lower() and entry.is_file())
+    return filename if filename in matches or not matches else matches[0]
 
 
 def browser_record(folder, record):

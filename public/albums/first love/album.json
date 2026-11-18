@@ -1,16 +1,17 @@
 {
   "id": "record-713df891-8cb4-4f99-be68-48c73b024a11",
-  "title": "first love",
-  "artist": "utada",
+  "title": "First Love",
+  "artist": "Hikaru Utada",
   "version": "日版",
   "price": "250",
   "purchaseChannel": "咸鱼",
   "note": "",
   "source": "iTunes Store",
   "format": "vinyl",
-  "cover": "cover.jpg",
+  "cover": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/77/67/00/77670013-e2ed-437a-dc30-e9cb74056cbe/00600406427052.rgb.jpg/600x600bb.jpg",
   "motionUrl": "",
   "storeUrl": "https://music.apple.com/tw/album/first-love-remastered-2014/1440763349?uo=4",
   "collectionId": 1440763349,
-  "createdAt": "2026-11-17T02:18:26.478+00:00"
+  "createdAt": "2026-11-17T02:18:26.478+00:00",
+  "originalArtworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/77/67/00/77670013-e2ed-437a-dc30-e9cb74056cbe/00600406427052.rgb.jpg/100x100bb.jpg"
 }

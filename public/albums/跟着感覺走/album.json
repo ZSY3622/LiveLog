@@ -7,8 +7,8 @@
   "purchaseChannel": "",
   "note": "",
   "source": "",
-  "format": "vinyl",
-  "cover": "",
+  "format": "cd",
+  "cover": "cover.png",
   "motionUrl": "",
   "storeUrl": "",
   "createdAt": "2026-11-17T02:31:32.979+00:00"
