@@ -406,7 +406,7 @@ window.ALBUM_DATA = [
     "id": "record-8a42ddd5-3106-4692-866a-c9cba7a84b93",
     "title": "物件所在",
     "artist": "FunkyMo",
-    "version": "台版",
+    "version": "台版-签名",
     "price": "130",
     "purchaseChannel": "拼团",
     "note": "",
