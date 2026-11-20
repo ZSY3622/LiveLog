@@ -56,9 +56,13 @@
       host, src: record.motionUrl, localVideo: record.localVideo,
       onState: ({ state, message }) => {
         const active = state === 'playing' || state === 'loading';
-        button.textContent = active ? 'Ⅱ 暂停动态封面' : state === 'failed' ? '↻ 重试动态封面' : '▷ 播放动态封面';
+        const failed = state === 'failed';
+        const action = active ? '暂停' : failed ? '重试' : '播放';
+        button.textContent = active ? 'Ⅱ' : failed ? '↻' : '▶︎';
         button.setAttribute('aria-pressed', String(active));
-        button.setAttribute('aria-label', `${active ? '暂停' : '播放'}${record.title}动态封面`);
+        button.setAttribute('aria-label', `${action}${record.title}动态封面`);
+        if (failed) button.title = '动态封面暂不可用，点击重试';
+        else button.removeAttribute('title');
         if (status) status.textContent = message;
       }
     });
@@ -137,9 +141,12 @@
     $('featuredArtist').hidden = !record.artist;
     $('featuredStore').hidden = !record.storeUrl;
     if (record.storeUrl) storeBadge(record, $('featuredStore'));
-    $('featuredMotionBar').hidden = !record.motionUrl;
-    if (record.motionUrl) {
-      featuredMotion = motionControl($('featuredCover'), record, $('featuredMotionToggle'), $('featuredMotionStatus'));
+    const motionToggle = $('featuredMotionToggle');
+    motionToggle.hidden = !record.motionUrl;
+    if (!motionToggle.hidden) {
+      featuredMotion = motionControl($('featuredCover'), record, motionToggle, $('featuredMotionStatus'));
+    } else {
+      $('featuredMotionStatus').textContent = '';
     }
   }
 
@@ -259,15 +266,17 @@
     $('detailPrice').textContent = record.price || '未记录';
     $('detailPurchaseChannel').textContent = record.purchaseChannel || '未记录';
     $('detailPurchaseDate').textContent = record.purchaseDate || '未记录';
-    $('detailCondition').textContent = record.condition || '未记录';
     $('detailNote').textContent = record.note || '未记录';
     renderCover($('detailCover'), record, true);
     $('detailSource').replaceChildren();
     if (record.storeUrl) $('detailSource').append(storeBadge(record), create('span', '', `来源：${record.source} / Apple`));
-    $('detailMotionBar').hidden = !record.motionUrl;
-    if (record.motionUrl) {
-      detailMotion = motionControl($('detailCover'), record, $('detailMotionToggle'), $('detailMotionStatus'));
+    const motionToggle = $('detailMotionToggle');
+    motionToggle.hidden = !record.motionUrl;
+    if (!motionToggle.hidden) {
+      detailMotion = motionControl($('detailCover'), record, motionToggle, $('detailMotionStatus'));
       if ($('addDialog').open) detailMotion?.setSuspended(true);
+    } else {
+      $('detailMotionStatus').textContent = '';
     }
   }
 
@@ -331,7 +340,7 @@
   const removeCoverButton = $('removeAlbumCover');
   const addSubmitButton = form.querySelector('button[type="submit"]');
   const formFields = form.querySelector('.form-grid');
-  const albumFields = ['title', 'artist', 'format', 'version', 'price', 'purchaseChannel', 'purchaseDate', 'condition', 'note'];
+  const albumFields = ['title', 'artist', 'format', 'version', 'price', 'purchaseChannel', 'purchaseDate', 'note'];
   let coverSearchRequest;
   let selectedCover = null;
   let editedAlbum = null;
@@ -754,27 +763,6 @@
   });
   document.addEventListener('click', event => { if (!navigation.contains(event.target) && !menu.contains(event.target)) closeNavigation(); });
 
-  const themeKey = 'echoes-color-mode-v1';
-  function syncTheme(theme) {
-    document.documentElement.dataset.theme = theme;
-    const iconPath = theme === 'light' ? 'public/livelog-icon-light.svg' : 'public/livelog-icon.svg';
-    document.querySelectorAll('[data-brand-icon]').forEach(icon => icon.setAttribute(icon.tagName === 'LINK' ? 'href' : 'src', iconPath));
-    document.querySelectorAll('[data-set-theme]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.setTheme === theme)));
-    $('browserThemeColor').content = theme === 'light' ? '#f5f5f3' : '#050505';
-  }
-  document.querySelectorAll('[data-set-theme]').forEach(button => button.addEventListener('click', () => {
-    syncTheme(button.dataset.setTheme);
-    try { localStorage.setItem(themeKey, button.dataset.setTheme); } catch { /* Private/file browsing may block storage. */ }
-  }));
-  matchMedia('(prefers-color-scheme: light)').addEventListener('change', event => {
-    let saved;
-    try { saved = localStorage.getItem(themeKey); } catch {}
-    if (saved !== 'light' && saved !== 'dark') syncTheme(event.matches ? 'light' : 'dark');
-  });
-  window.addEventListener('storage', event => {
-    if (event.key === themeKey) syncTheme(event.newValue === 'light' || event.newValue === 'dark' ? event.newValue : (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'));
-  });
-  syncTheme(document.documentElement.dataset.theme);
   window.addEventListener('pagehide', () => {
     featuredMotion?.setSuspended(true);
     cardMotionPlayers.forEach(player => player.setSuspended(true));

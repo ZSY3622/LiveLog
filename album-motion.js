@@ -28,20 +28,12 @@
     let generation = 0;
     let timeout;
 
-    const messages = {
-      idle: '静态封面 · 可播放动态封面',
-      loading: '正在加载动态封面…',
-      playing: '动态封面播放中 · 静音循环',
-      paused: '动态封面已暂停',
-      blocked: '点击播放动态封面',
-      failed: '动态封面暂不可用，已显示静态封面'
-    };
     function notify(next) {
       if (destroyed) return;
       state = next;
       host.dataset.motionState = state;
       if (state !== 'playing' && state !== 'loading') host.classList.remove('motion-active');
-      onState({ state, message: state === 'idle' && reducedMotion.matches ? '减少动态效果已开启 · 可手动播放' : messages[state] });
+      onState({ state, message: state === 'failed' ? '动态封面暂不可用，已显示静态封面' : '' });
     }
     function clearTimeouts() { clearTimeout(timeout); timeout = undefined; }
     function release() {

@@ -24,6 +24,7 @@
   <script src="public/album-data.js" defer></script>
   <script src="album-archive.js" defer></script>
   <script src="albums.js" defer></script>
+  <script src="theme-switch.js" defer></script>
 <script src="page-transition.js"></script>
 </head>
 <body>
@@ -37,6 +38,7 @@
         <a href="index.html">首页</a><a href="albums.html" aria-current="page">唱片架</a>
       </nav>
       <div class="theme-switch" role="group" aria-label="页面外观：白天或黑夜">
+        <span class="theme-switch-thumb" aria-hidden="true"></span>
         <button type="button" data-set-theme="light" aria-label="切换白天主题" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg><span>白天</span></button>
         <button type="button" data-set-theme="dark" aria-label="切换黑夜主题" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.9 13.1A9 9 0 0 1 10.9 3.1 9 9 0 1 0 20.9 13.1z"/></svg><span>黑夜</span></button>
       </div>
@@ -57,8 +59,14 @@
             <div class="hero-sleeve empty-sleeve" id="featuredPlaceholder" aria-hidden="true"><span class="cover-frame"></span></div>
             <button type="button" class="hero-sleeve" id="featuredAlbum" hidden><span class="cover-frame" id="featuredCover"></span></button>
           </div>
-          <div class="display-caption" id="featuredCaption" hidden><div><p><strong id="featuredTitle"></strong><span id="featuredArtist"></span></p></div><a class="hero-store" id="featuredStore" target="_blank" rel="noopener noreferrer" hidden></a></div>
-          <div class="motion-toolbar" id="featuredMotionBar" hidden><span class="motion-status" id="featuredMotionStatus" role="status"></span><button type="button" class="motion-toggle" id="featuredMotionToggle" aria-pressed="false">▷ 播放动态封面</button></div>
+          <div class="display-caption" id="featuredCaption" hidden>
+            <div><p><strong id="featuredTitle"></strong><span id="featuredArtist"></span></p></div>
+            <div class="featured-actions">
+              <button type="button" class="motion-toggle" id="featuredMotionToggle" aria-pressed="false" hidden></button>
+              <a class="hero-store" id="featuredStore" target="_blank" rel="noopener noreferrer" hidden></a>
+            </div>
+          </div>
+          <span class="sr-only" id="featuredMotionStatus" role="status"></span>
         </div>
       </div>
     </section>
@@ -98,10 +106,10 @@
     <button type="button" class="close-button icon-button" data-close aria-label="关闭专辑详情">×</button>
     <div class="detail-layout">
       <div class="detail-art">
-        <div class="cover-frame" id="detailCover"></div>
-        <div class="motion-toolbar detail-motion-toolbar" id="detailMotionBar" hidden>
-          <span class="motion-status" id="detailMotionStatus" role="status"></span>
-          <button type="button" class="motion-toggle" id="detailMotionToggle" aria-pressed="false">▷ 播放动态封面</button>
+        <div class="detail-cover-layout">
+          <div class="cover-frame" id="detailCover"></div>
+          <span class="sr-only" id="detailMotionStatus" role="status"></span>
+          <button type="button" class="motion-toggle detail-motion-toggle" id="detailMotionToggle" aria-pressed="false" hidden></button>
         </div>
       </div>
       <div class="detail-body">
@@ -109,14 +117,16 @@
         <p id="detailArtist" class="detail-artist"></p>
         <div class="detail-actions">
           <span class="medium-badge" id="detailFormat"></span>
-          <button type="button" class="button" id="editAlbum" aria-haspopup="dialog">编辑唱片</button>
+          <button type="button" class="quiet-button" id="editAlbum" aria-haspopup="dialog">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 20l1-5L16 4l4 4L9 19l-5 1ZM14 6l4 4"/></svg>
+            编辑唱片
+          </button>
         </div>
         <dl class="detail-facts">
           <div><dt>实体版本</dt><dd id="detailVersion">未记录</dd></div>
           <div><dt>购入价格</dt><dd id="detailPrice">未记录</dd></div>
           <div><dt>购买渠道</dt><dd id="detailPurchaseChannel">未记录</dd></div>
           <div><dt>购入日期</dt><dd id="detailPurchaseDate">未记录</dd></div>
-          <div><dt>品相</dt><dd id="detailCondition">未记录</dd></div>
         </dl>
         <div class="detail-note"><h3>收藏笔记</h3><p id="detailNote">未记录</p></div>
         <div class="detail-source" id="detailSource"></div>
@@ -132,11 +142,11 @@
       <form id="addForm" aria-describedby="formIntro">
         <div class="form-grid">
           <label class="field"><span>专辑名称 <span class="required">*</span></span><input name="title" required maxlength="120" placeholder="如：黑色柳丁"></label>
-          <label class="field"><span>音乐人 <span class="optional">可选</span></span><input name="artist" maxlength="100" placeholder="歌手或乐队名称"></label>
+          <label class="field"><span>音乐人</span><input name="artist" maxlength="100" placeholder="歌手或乐队名称"></label>
           <label class="field field-wide"><span>唱片介质 <span class="required">*</span></span><select name="format" required><option value="vinyl">黑胶 Vinyl</option><option value="cd">CD Compact Disc</option></select></label>
           <div class="field field-wide">
             <div class="cover-search-heading">
-              <label for="albumCoverUrl">封面 <span class="optional">可选</span></label>
+              <label for="albumCoverUrl">封面</label>
               <button type="button" class="cover-search-button" id="coverSearchButton" aria-controls="coverSearchResults" disabled>搜索封面</button>
             </div>
             <p class="cover-search-status" id="coverSearchStatus" role="status"></p>
@@ -145,12 +155,11 @@
             <small id="coverHelp">支持 HTTP / HTTPS 图片链接，留空将显示占位图。</small>
             <button type="button" class="quiet-button" id="removeAlbumCover" hidden>移除当前封面</button>
           </div>
-          <label class="field"><span>实体版本 <span class="optional">可选</span></span><input name="version" maxlength="120" placeholder="如：周年纪念版"></label>
-          <label class="field"><span>购入价格 <span class="optional">可选</span></span><input name="price" maxlength="40" placeholder="如：112"></label>
-          <label class="field field-wide"><span>购买渠道 <span class="optional">可选</span></span><input name="purchaseChannel" maxlength="200" placeholder="如：店铺、平台或链接"></label>
-          <label class="field"><span>购入日期 <span class="optional">可选</span></span><input name="purchaseDate" type="date"></label>
-          <label class="field"><span>品相 <span class="optional">可选</span></span><input name="condition" maxlength="80" placeholder="如：全新、二手近新"></label>
-          <label class="field field-wide"><span>收藏笔记 <span class="optional">可选</span></span><textarea name="note" rows="3" maxlength="1000" placeholder="记下你与这张专辑的故事…"></textarea></label>
+          <label class="field"><span>实体版本</span><input name="version" maxlength="120" placeholder="如：周年纪念版"></label>
+          <label class="field"><span>购入价格</span><input name="price" maxlength="40" placeholder="如：112"></label>
+          <label class="field"><span>购买渠道</span><input name="purchaseChannel" maxlength="200" placeholder="如：店铺、平台或链接"></label>
+          <label class="field"><span>购入日期</span><input name="purchaseDate" type="date"></label>
+          <label class="field field-wide"><span>收藏笔记</span><textarea name="note" rows="3" maxlength="1000" placeholder="记下你与这张专辑的故事…"></textarea></label>
         </div>
         <p class="form-error" id="formError" role="alert"></p>
         <div class="form-actions">

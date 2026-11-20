@@ -93,33 +93,5 @@
 <script src="gallery-slideshow.js"></script>
 <script src="hero-space.js"></script>
 <script src="app.js"></script>
-
-<script>
-(() => {
- 'use strict';
- const KEY = 'echoes-color-mode-v1';
- const root = document.documentElement;
- const buttons = [...document.querySelectorAll('[data-set-theme]')];
- const sync = theme => {
-  root.setAttribute('data-theme', theme);
-  const iconPath = theme === 'light' ? 'public/livelog-icon-light.svg' : 'public/livelog-icon.svg';
-  document.querySelectorAll('[data-brand-icon]').forEach(icon => icon.setAttribute(icon.tagName === 'LINK' ? 'href' : 'src', iconPath));
-  buttons.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.setTheme === theme)));
-  const meta = document.getElementById('browserThemeColor');
-  if(meta) meta.setAttribute('content', theme === 'light' ? '#f5f5f3' : '#050505');
- };
- const choose = theme => {
-  sync(theme);
-  try {localStorage.setItem(KEY, theme)} catch(e) { /* file or private browsing may block persistence */ }
- };
- buttons.forEach(button => button.addEventListener('click', () => choose(button.dataset.setTheme)));
- sync(root.getAttribute('data-theme') === 'light' ? 'light' : 'dark');
- try {
-  const query = window.matchMedia('(prefers-color-scheme: dark)');
-  const followSystem = event => {let saved; try { saved = localStorage.getItem(KEY) } catch(e) {} if(saved !== 'light' && saved !== 'dark') sync(event.matches ? 'dark' : 'light')};
-  if(query.addEventListener) query.addEventListener('change', followSystem);
-  else if(query.addListener) query.addListener(followSystem);
- } catch(e) {}
-})();
-</script>
+<script src="theme-switch.js"></script>
 </body></html>

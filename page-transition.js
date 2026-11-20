@@ -1,8 +1,8 @@
-/* Shared document navigation curtain; loaded in <head> before first paint. */
 (() => {
   'use strict';
   const root = document.documentElement;
-  const classes = ['page-cover', 'page-leaving', 'page-revealing'];
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  const classes = ['page-leaving', 'page-revealing'];
   let leaving = false;
   let navigationTimer;
   let cleanupTimer;
@@ -14,8 +14,9 @@
   };
   const reveal = () => {
     reset();
+    if (reducedMotion.matches) return;
     root.classList.add('page-revealing');
-    cleanupTimer = setTimeout(reset, 450);
+    cleanupTimer = setTimeout(reset, 500);
   };
   const pendingKey = 'livelog-page-transition';
   let arriving = false;
@@ -24,17 +25,13 @@
     sessionStorage.removeItem(pendingKey);
     arriving = pending?.href === location.href && Date.now() - pending.time < 10000;
   } catch (_) { /* Storage may be unavailable for local files. */ }
-  if (arriving) {
-    root.classList.add('page-cover');
-    // A slow resource must never leave the page blocked.
-    cleanupTimer = setTimeout(reset, 3000);
-    document.addEventListener('DOMContentLoaded', reveal, { once: true });
-  }
+  if (arriving) reveal();
+  window.addEventListener('pagehide', reset);
   window.addEventListener('pageshow', event => {
     if (event.persisted) reveal();
   });
   document.addEventListener('click', event => {
-    if (event.defaultPrevented || event.button !== 0 || event.metaKey ||
+    if (reducedMotion.matches || event.defaultPrevented || event.button !== 0 || event.metaKey ||
         event.ctrlKey || event.shiftKey || event.altKey) return;
     const link = event.target.closest?.('a[href]');
     if (!link || link.hasAttribute('download') ||
@@ -59,7 +56,7 @@
         sessionStorage.setItem(pendingKey, JSON.stringify({ href: next.href, time: Date.now() }));
       } catch (_) { /* Navigation remains available without storage. */ }
       location.assign(next.href);
-      cleanupTimer = setTimeout(reset, 4000);
-    }, 300);
+      cleanupTimer = setTimeout(reset, 1800);
+    }, 100);
   });
 })();
