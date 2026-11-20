@@ -94,7 +94,7 @@ test('native HEIC failure falls back to upstream decoding over HTTP once',()=>{
 test('unsupported file HEIC gives actionable instructions without a blocked fetch',()=>{
  const src='file:///concert/IMG.heif', {player,statuses}=setup({imageSrc:src});
  player.loadAndroidLivePhoto(src);player.elements.image.dispatchEvent(new Event('error'));
- assert.equal(player.fallbackSources,undefined);assert.match(statuses.at(-1),/Safari 17.*HTTP/);
+ assert.equal(player.fallbackSources,undefined);assert.match(statuses.at(-1),/Safari 17.*本地页面/);
 });
 test('closing during native loading removes callbacks and never starts a fallback',()=>{
  const {player,statuses}=setup();player.loadAndroidLivePhoto(player.options.imageSrc);player.destroy();
@@ -111,9 +111,9 @@ test('viewer attaches the original MOV only when playback is requested',async()=
  assert.equal(player.elements.video.getAttribute('src'),player.options.videoSrc);
  assert.equal(player.upstreamStarts,1);
 });
-test('failed file-protocol HEIC reads explain how to open a working preview',async()=>{
+test('failed file-protocol HEIC reads suggest local recovery steps',async()=>{
  const {player,statuses}=setup({protocol:'file:'});
  await player.trackLoad(Promise.resolve());await settle();
- assert.match(statuses.at(-1),/直接打开 HTML/);
- assert.match(player.warning,/HTTP/);
+ assert.match(statuses.at(-1),/本地实况照片加载失败/);
+ assert.match(player.warning,/Safari 17/);
 });

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#050505" id="browserThemeColor">
+  <meta name="description" content="在 LiveLog 整理黑胶与 CD 收藏。">
+  <link rel="icon" data-brand-icon href="public/livelog-icon.svg" type="image/svg+xml">
+  <title>唱片架 · LiveLog</title>
+  <script>
+    (() => {
+      let saved;
+      try { saved = localStorage.getItem('echoes-color-mode-v1'); } catch {}
+      const theme = saved === 'light' || saved === 'dark' ? saved : (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      document.documentElement.dataset.theme = theme;
+      document.getElementById('browserThemeColor').content = theme === 'light' ? '#f5f5f3' : '#050505';
+      document.querySelector('[data-brand-icon]').href = theme === 'light' ? 'public/livelog-icon-light.svg' : 'public/livelog-icon.svg';
+    })();
+  </script>
+  <link rel="stylesheet" href="albums.css">
+  <script src="public/vendor/hls/1.7.3/hls.min.js" defer></script>
+  <script src="album-motion.js" defer></script>
+  <script src="public/album-motion-data.js" defer></script>
+  <script src="public/album-data.js" defer></script>
+  <script src="album-archive.js" defer></script>
+  <script src="albums.js" defer></script>
+  <script src="theme-switch.js" defer></script>
+<script src="page-transition.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#collection">跳至唱片收藏</a>
+  <header class="header" id="top">
+    <div class="shell header-inner">
+      <a class="brand" href="index.html" aria-label="LiveLog 首页">
+        <span class="brand-name">LiveLog</span>
+      </a>
+      <nav class="navigation" id="navigation" aria-label="主导航">
+        <a href="index.html">首页</a><a href="albums.html" aria-current="page">唱片架</a>
+      </nav>
+      <div class="theme-switch" role="group" aria-label="页面外观：白天或黑夜">
+        <span class="theme-switch-thumb" aria-hidden="true"></span>
+        <button type="button" data-set-theme="light" aria-label="切换白天主题" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg><span>白天</span></button>
+        <button type="button" data-set-theme="dark" aria-label="切换黑夜主题" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.9 13.1A9 9 0 0 1 10.9 3.1 9 9 0 1 0 20.9 13.1z"/></svg><span>黑夜</span></button>
+      </div>
+      <button type="button" class="menu-button icon-button" id="menuButton" aria-label="切换导航菜单" aria-controls="navigation" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="hero" aria-labelledby="pageTitle">
+      <div class="hero-layout">
+        <div class="hero-copy">
+          <h1 id="pageTitle">唱片架</h1>
+          <div class="hero-actions"><a class="button button-gold" href="#collection">浏览唱片架 <span aria-hidden="true">↗</span></a><button class="quiet-button" type="button" data-open-add><span aria-hidden="true">＋</span> 添加唱片</button></div>
+        </div>
+        <div class="hero-display">
+          <div class="record-stage">
+            <div class="vinyl" aria-hidden="true"><div class="vinyl-label"></div></div>
+            <div class="hero-sleeve empty-sleeve" id="featuredPlaceholder" aria-hidden="true"><span class="cover-frame"></span></div>
+            <button type="button" class="hero-sleeve" id="featuredAlbum" hidden><span class="cover-frame" id="featuredCover"></span></button>
+          </div>
+          <div class="display-caption" id="featuredCaption" hidden>
+            <div><p><strong id="featuredTitle"></strong><span id="featuredArtist"></span></p></div>
+            <div class="featured-actions">
+              <button type="button" class="motion-toggle" id="featuredMotionToggle" aria-pressed="false" hidden></button>
+              <a class="hero-store" id="featuredStore" target="_blank" rel="noopener noreferrer" hidden></a>
+            </div>
+          </div>
+          <span class="sr-only" id="featuredMotionStatus" role="status"></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="stats" aria-label="收藏统计">
+      <div class="stat"><span class="stat-label">专辑收藏</span><p><strong id="albumCount">00</strong><span>张专辑</span></p></div>
+      <div class="stat"><span class="stat-label">黑胶唱片</span><p><strong id="vinylCount">00</strong><span>张</span></p></div>
+      <div class="stat"><span class="stat-label">CD</span><p><strong id="cdCount">00</strong><span>张</span></p></div>
+      <div class="stat"><span class="stat-label">收藏音乐人</span><p><strong id="artistCount">00</strong><span>位音乐人</span></p></div>
+      <div class="stat stat-total">
+        <span class="stat-label">总花费</span>
+        <div id="totalSpending" aria-live="polite"><p><span>暂无可统计金额</span></p></div>
+      </div>
+    </section>
+
+    <section class="collection" id="collection" aria-labelledby="collectionTitle">
+      <div class="section-heading"><div><h2 id="collectionTitle">专辑收藏</h2></div><button type="button" class="button" data-open-add><span aria-hidden="true">＋</span> 添加唱片</button></div>
+      <div class="toolbar">
+        <div class="format-tabs" role="group" aria-label="筛选唱片介质"><button type="button" class="filter active" data-format="all" aria-pressed="true">全部 <span id="allFilterCount">0</span></button><button type="button" class="filter" data-format="vinyl" aria-pressed="false"><span class="format-dot vinyl-dot" aria-hidden="true"></span>黑胶</button><button type="button" class="filter" data-format="cd" aria-pressed="false"><span class="format-dot cd-dot" aria-hidden="true"></span>CD</button></div>
+        <div class="collection-controls"><label class="search-control"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg><span class="sr-only">搜索专辑或歌手</span><input id="albumSearch" type="search" placeholder="搜索专辑、歌手…" autocomplete="off"></label><label class="sort-control"><span class="sr-only">唱片排序</span><select id="albumSort"><option value="default">陈列顺序</option><option value="title">专辑名称</option><option value="artist">音乐人</option></select><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></label></div>
+      </div>
+      <div class="collection-meta"><p id="resultCount" role="status" aria-live="polite">共 0 张专辑</p></div>
+      <div class="record-grid" id="recordGrid"></div>
+      <div class="empty-state" id="emptyState">
+        <span class="empty-record" aria-hidden="true">◎</span>
+        <h3 id="emptyStateTitle">暂无唱片</h3>
+        <p id="emptyStateHelp">添加你的第一张唱片。</p>
+        <button type="button" class="button" id="emptyAddAlbum" data-open-add>添加唱片</button>
+        <button type="button" class="button" id="clearFilters" hidden>清空筛选</button>
+      </div>
+    </section>
+
+  </main>
+  <footer class="shell footer"><a class="footer-brand" href="index.html">LiveLog</a><a class="text-link" href="index.html">回到首页 ↗</a></footer>
+
+  <dialog class="modal" id="detailDialog" aria-labelledby="detailTitle">
+    <button type="button" class="close-button icon-button" data-close aria-label="关闭专辑详情">×</button>
+    <div class="detail-layout">
+      <div class="detail-art">
+        <div class="detail-cover-layout">
+          <div class="cover-frame" id="detailCover"></div>
+          <span class="sr-only" id="detailMotionStatus" role="status"></span>
+          <button type="button" class="motion-toggle detail-motion-toggle" id="detailMotionToggle" aria-pressed="false" hidden></button>
+        </div>
+      </div>
+      <div class="detail-body">
+        <h2 id="detailTitle"></h2>
+        <p id="detailArtist" class="detail-artist"></p>
+        <div class="detail-actions">
+          <span class="medium-badge" id="detailFormat"></span>
+          <button type="button" class="quiet-button" id="editAlbum" aria-haspopup="dialog">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 20l1-5L16 4l4 4L9 19l-5 1ZM14 6l4 4"/></svg>
+            编辑唱片
+          </button>
+        </div>
+        <dl class="detail-facts">
+          <div><dt>实体版本</dt><dd id="detailVersion">未记录</dd></div>
+          <div><dt>购入价格</dt><dd id="detailPrice">未记录</dd></div>
+          <div><dt>购买渠道</dt><dd id="detailPurchaseChannel">未记录</dd></div>
+          <div><dt>购入日期</dt><dd id="detailPurchaseDate">未记录</dd></div>
+        </dl>
+        <div class="detail-note"><h3>收藏笔记</h3><p id="detailNote">未记录</p></div>
+        <div class="detail-source" id="detailSource"></div>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog class="modal add-dialog" id="addDialog" aria-labelledby="addTitle">
+    <div class="add-body">
+      <button type="button" class="close-button icon-button" data-close aria-label="关闭唱片表单">×</button>
+      <h2 id="addTitle">添加唱片</h2>
+      <p class="form-intro" id="formIntro">唱片保存到项目的 public/albums。首次保存时请授权项目的 public 文件夹。</p>
+      <form id="addForm" aria-describedby="formIntro">
+        <div class="form-grid">
+          <label class="field"><span>专辑名称 <span class="required">*</span></span><input name="title" required maxlength="120" placeholder="如：黑色柳丁"></label>
+          <label class="field"><span>音乐人</span><input name="artist" maxlength="100" placeholder="歌手或乐队名称"></label>
+          <label class="field field-wide"><span>唱片介质 <span class="required">*</span></span><select name="format" required><option value="vinyl">黑胶 Vinyl</option><option value="cd">CD Compact Disc</option></select></label>
+          <div class="field field-wide">
+            <div class="cover-search-heading">
+              <label for="albumCoverUrl">封面</label>
+              <button type="button" class="cover-search-button" id="coverSearchButton" aria-controls="coverSearchResults" disabled>搜索封面</button>
+            </div>
+            <p class="cover-search-status" id="coverSearchStatus" role="status"></p>
+            <div class="cover-search-results" id="coverSearchResults" role="group" aria-label="封面搜索结果" hidden></div>
+            <input id="albumCoverUrl" name="cover" type="url" aria-label="封面图片地址" placeholder="也可以粘贴图片地址" aria-describedby="coverHelp">
+            <small id="coverHelp">支持 HTTP / HTTPS 图片链接，留空将显示占位图。</small>
+            <button type="button" class="quiet-button" id="removeAlbumCover" hidden>移除当前封面</button>
+          </div>
+          <label class="field"><span>实体版本</span><input name="version" maxlength="120" placeholder="如：周年纪念版"></label>
+          <label class="field"><span>购入价格</span><input name="price" maxlength="40" placeholder="如：112"></label>
+          <label class="field"><span>购买渠道</span><input name="purchaseChannel" maxlength="200" placeholder="如：店铺、平台或链接"></label>
+          <label class="field"><span>购入日期</span><input name="purchaseDate" type="date"></label>
+          <label class="field field-wide"><span>收藏笔记</span><textarea name="note" rows="3" maxlength="1000" placeholder="记下你与这张专辑的故事…"></textarea></label>
+        </div>
+        <p class="form-error" id="formError" role="alert"></p>
+        <div class="form-actions">
+          <button type="button" class="quiet-button" data-close>取消</button>
+          <button type="submit" class="button button-gold"><span id="addSubmitLabel">添加唱片</span> <span aria-hidden="true">↗</span></button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <noscript><p class="noscript-note">请启用 JavaScript，以浏览唱片、筛选和查看详情。</p></noscript>
+</body>
+</html>

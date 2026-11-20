@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LiveLog · CD 滑动预览</title>
+<link rel="stylesheet" href="concert.css">
+<script defer src="public/concert-data.js"></script><script defer src="cd-preview.js"></script>
+</head>
+<body class="cd-preview">
+<header class="cd-info"><h1 id="cd-title">现场收藏</h1><dl><div><dt>音乐人</dt><dd id="cd-artist"></dd></div><div><dt>日期</dt><dd id="cd-date"></dd></div><div><dt>现场</dt><dd id="cd-venue"></dd></div></dl></header>
+<main class="cd-stage" tabindex="0" aria-label="演唱会 CD，左右拖动或使用左右方向键切换"><div class="cd-track"></div></main>
+<div class="cd-caption"><span id="cd-count" aria-live="polite"></span><span>左右拖动，翻阅现场记忆</span></div>
+<nav class="cd-dock" aria-label="唱片导航"><a class="cd-logo" href="index.html">LiveLog</a><span class="cd-dock-label">现场唱片</span><button id="cd-prev" aria-label="上一张唱片">←</button><button id="cd-next" aria-label="下一张唱片">→</button><button id="cd-index" aria-expanded="false" aria-controls="cd-list">目录 <span>＋</span></button></nav>
+<section class="cd-index-panel" id="cd-list" aria-label="唱片目录" hidden></section>
+</body></html>

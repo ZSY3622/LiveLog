@@ -33,7 +33,7 @@
     this.nativeImagePending=false;cleanup();
     if(this.disposed)return;
     if(new URL(src,document.baseURI).protocol==='file:'){
-     this.onStatus('此浏览器无法直接显示本地 HEIC，请使用 Safari 17 或更新版本，或通过本地 HTTP 预览。');
+     this.onStatus('此浏览器无法直接显示本地 HEIC，请用 Safari 17 或更新版本打开本地页面。');
      return;
     }
     // Keep the upstream decoder for browsers without native HEIC support.
@@ -69,7 +69,7 @@
   reportImageFailure(){
    if(this.disposed)return;
    const message=window.location?.protocol==='file:'
-    ?'直接打开 HTML 时，浏览器会限制实况照片读取。请通过本机 HTTP 预览或 GitHub Pages 打开页面。'
+    ?'本地实况照片加载失败，请检查原片和路径，或用 Safari 17 或更新版本打开页面。'
     :'原始照片加载失败，请检查 HEIC 文件和资源路径。';
    if(!this.preview)this.showWarning(message);
    this.onStatus(message);

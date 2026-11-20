@@ -57,7 +57,6 @@ function stats(){
  $('statCities').innerHTML=`${pad(new Set(attended.map(r=>r.city)).size)}<span>座</span>`;
  $('statArtists').innerHTML=`${pad(new Set(attended.map(r=>r.artist)).size)}<span>组</span>`;
  $('statYears').innerHTML=`${pad(new Set(attended.map(year)).size)}<span>年</span>`;
- $('latestLine').textContent=sorted.length?`${sorted[0].artist} · ${displayDate(sorted[0].date)}`:'等待下一场现场';
  $('sideYear').textContent=sorted.length?year(sorted[0]):'LIVE';
  $('localSummary').textContent=`${attended.length} 场现场 · ${data.filter(upcoming).length} 场待赴 · ${data.reduce((n,r)=>n+(r.media?.length||0),0)} 张现场照片`;
 }
@@ -258,7 +257,7 @@ function renderConcertDetail(r){
  }
  const media=r.media||[], album=$('detailAlbum');album.replaceChildren();
  $('albumCount').textContent=media.length?`${media.length} 份现场记忆`:'';
- $('albumHelp').textContent=media.some(m=>m.kind==='live')?'带 ◉ LIVE 标记的是原始实况照片。点击放大后，悬停或按住 LIVE 图标播放。':media.length?'点击照片，放大重温那一晚。':'';
+ $('albumHelp').textContent=media.some(m=>m.kind==='live')?'放大照片后，悬停或按住 LIVE 图标播放。':media.length?'点击照片放大。':'';
  if(!media.length){const empty=document.createElement('p');empty.className='album-empty';empty.textContent=upcoming(r)?'等到那一晚，把新的现场带回来。':'这一晚的照片，等你慢慢收藏。';album.append(empty);return}
  media.forEach((item,index)=>{
   const button=document.createElement('button');button.type='button';button.className='album-photo';
