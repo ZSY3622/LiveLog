@@ -14,6 +14,38 @@ window.CONCERT_DATA = [
     "media": []
   },
   {
+    "date": "2026-11-21",
+    "title": "「野生」巡回演唱会",
+    "artist": "萧敬腾",
+    "city": "泉州",
+    "venue": "泉州海峡体育中心体育场",
+    "seat": "325区 6排 24号",
+    "price": "580",
+    "note": "",
+    "id": "concert-2026-11-21",
+    "poster": "public/concert/2026-11-21/poster.png",
+    "media": [
+      {
+        "name": "IMG_2889.HEIC",
+        "original": "public/concert/2026-11-21/live/IMG_2889.HEIC",
+        "kind": "photo",
+        "image": "public/concert/2026-11-21/live/_web/IMG_2889.jpg"
+      },
+      {
+        "name": "IMG_2902.HEIC",
+        "original": "public/concert/2026-11-21/live/IMG_2902.HEIC",
+        "kind": "photo",
+        "image": "public/concert/2026-11-21/live/_web/IMG_2902.jpg"
+      },
+      {
+        "name": "IMG_2938.HEIC",
+        "original": "public/concert/2026-11-21/live/IMG_2938.HEIC",
+        "kind": "photo",
+        "image": "public/concert/2026-11-21/live/_web/IMG_2938.jpg"
+      }
+    ]
+  },
+  {
     "date": "2026-03-08",
     "title": "歌迹 Journey",
     "artist": "A-Lin",
@@ -316,7 +348,7 @@ window.CONCERT_DATA = [
     "city": "厦门",
     "venue": "厦门市体育中心体育场",
     "seat": "",
-    "price": "",
+    "price": "1380",
     "note": "",
     "id": "concert-2019-04-20",
     "poster": "public/concert/2019-04-20/poster.png",
